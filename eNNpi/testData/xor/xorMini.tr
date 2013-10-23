@@ -1,0 +1,6 @@
+networkTopology(2,2,1)
+inputOutputVector(-0.046,-0.02;0)
+inputOutputVector(0.971,0.992;0)
+inputOutputVector(0.041,0.004;0)
+inputOutputVector(0.028,-0.02;0)
+inputOutputVector(0.968,1.043;0)

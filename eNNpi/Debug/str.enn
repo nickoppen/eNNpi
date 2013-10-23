@@ -1,0 +1,4 @@
+version(1,0,0)
+name(,0,0,0)
+networkTopology(2,3,1)
+learning(0.2,0)

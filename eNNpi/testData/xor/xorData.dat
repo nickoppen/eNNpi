@@ -1,0 +1,5 @@
+networkTopology(2,2,1)
+inputVector(1.1,0.9)
+inputVector(0.01,1.1)
+inputVector(1.2, -0.01)
+inputVector(0.002, -0.1)

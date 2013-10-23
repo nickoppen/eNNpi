@@ -1,0 +1,1 @@
+./eNNpi -c 2 2 1 xorNew -t ../testData/xor/xorMini.tr -r ../testData/xor/xorData.dat -s ./save.enn
