@@ -98,6 +98,26 @@ class twoDFloatArray
                         return (arr->operator[](i))->operator[](j) = f;
                     }
 
+    void			writeOn(ostream & outStr)
+					{
+//						vector<vector<float> * >::iterator vI;
+//						vector<float>::iterator fI;
+    					unsigned int vi;
+    					unsigned int fi;
+
+    					cout << "lines read: " << arr->size();
+
+///						for(vI = arr->begin(); vI != arr->end(); vI++)
+    					for(vi = 0; vi < arr->size(); vi++)
+						{
+//							for(fI = vI->begin(); fI != vI->end(); fI++)
+    						for(fi = 0; fi < ((*arr)[vi])->size(); fi++)
+								cout << ((*arr)[vi])->operator[](fi) << " ";
+							cout << "\n";
+						}
+
+					}
+
 	
 	// internals
 	private:

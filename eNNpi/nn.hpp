@@ -329,7 +329,6 @@ class nn
 
                 theInputLayer->setLinkWeights(nFile->linkWeights(0));
                 theHiddenLayer->setLinkWeights(nFile->linkWeights(1));
-            //	theOutputLayer->setLinkWeights(nFile->linkWeights(2));
                 theHiddenLayer->setNodeBiases(nFile->nodeBiases(1));
                 theOutputLayer->setNodeBiases(nFile->nodeBiases(2));
 

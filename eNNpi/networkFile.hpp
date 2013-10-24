@@ -37,15 +37,15 @@ class networkFile : public NNFile
                             NNFile::setTo(theFile);
                         }
 
-						
+
 	// access
 		float			linkValue(unsigned int layer, unsigned int node, unsigned int link);
 		float			biasValue(unsigned int layer, unsigned int node);
-		
+
 		unsigned int	majorVersion() { return major; }	// major reconstruction of the network (will differ from other major versions by having different inputs etc.
 		unsigned int	minorVersion() { return minor; }	// minor versions have different starting point for training
 		unsigned int	revision() { return revis; }		// revisions have different amounts of training
-		
+
         void			networkDescription(network_description * netDes)	// structure passed in by the caller
                         {
                             netDes->setStandardInputNodes(net.standardInputNodes());
@@ -96,7 +96,7 @@ class networkFile : public NNFile
                                     throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
                             }
                         }
-	
+
 	private:
         status_t		decodeLine(string * strLine)
                         {
@@ -109,9 +109,12 @@ class networkFile : public NNFile
                                 {
 #ifdef _DEBUG_
                                         	cout << "Decode Link\n";
-#endif
+ #endif
 
                                     return decodeLink(&arguements);
+                                    cout << "done Decode Link - dumping\n";
+                                    inputLinkWghts.writeOn(cout);
+                                    cout << "Decode Link - exit\n";
                                 }
                                 if (verb ==  "node")
                                 {
@@ -295,19 +298,19 @@ class networkFile : public NNFile
 
                             return SUCCESS;
                         }
-		
+
 	private:
 		unsigned int	major;
 		unsigned int	minor;
 		unsigned int	revis;
-		
+
 		twoDFloatArray	inputLinkWghts;
 		twoDFloatArray	hiddenLinkWghts;
 //		twoDFloatArray	outputLinkWghts;
 		vector<float> *	hiddenBiases;		// created on readIn deleted at destruction
 		vector<float> * outputBiases;		//	"
-		bool			hasInputBiasNode;	// true if the input layer has a unaryBiasNode i.e. layerModifier(0, biasNode:true) 
-		
+		bool			hasInputBiasNode;	// true if the input layer has a unaryBiasNode i.e. layerModifier(0, biasNode:true)
+
         string 			name;
 };
 
