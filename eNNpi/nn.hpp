@@ -164,7 +164,7 @@ class nn
 
             void		train(vector<float> * inputVector, vector<float> * desiredVector, funcTrainCallback trComplete = NULL)
                         {
-                            // run													//	ATLTRACE2(atlTraceUser, 1, "======== RUN ========\n");
+                            // run
                             run(inputVector);
 
                             // train
@@ -174,10 +174,10 @@ class nn
 
                                 theOutputLayer->setDesiredValues(desiredVector);
 
-                                theHiddenLayer->waitForTraining();					//		ATLTRACE2(atlTraceUser, 1, "======== WAIT ========\n");
-                                theHiddenLayer->train();							//		ATLTRACE2(atlTraceUser, 1, "======== TRAIN ========\n");
-                                theHiddenLayer->blockTillTrained();					//		ATLTRACE2(atlTraceUser, 1, "======== BLOCK ========\n");
-                                                                                    //		ATLTRACE2(atlTraceUser, 1, "======== DONE ========\n");
+                                theHiddenLayer->waitForTraining();
+                                theHiddenLayer->train();
+                                theHiddenLayer->blockTillTrained();
+
                                 theInputLayer->waitForTraining();
                                 theInputLayer->train();
                                 theInputLayer->blockTillTrained();
