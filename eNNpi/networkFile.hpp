@@ -114,7 +114,7 @@ class networkFile : public NNFile
                                     return decodeLink(&arguements);
                                     cout << "done Decode Link - dumping\n";
                                     inputLinkWghts.writeOn(cout);
-                                    cout << "Decode Link - exit\n";
+                                    cout << "Decode Link done with dump - exit\n";
                                 }
                                 if (verb ==  "node")
                                 {
