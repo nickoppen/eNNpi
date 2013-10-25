@@ -268,7 +268,6 @@ class networkFile : public NNFile
 
         status_t		decodeNetworkTopology(string * strBracket)
                         {
-                            //networkTopology(3,2,2,0.10)
 
                             status_t returnVal = NNFile::decodeNetworkTopology(strBracket);
 
@@ -306,7 +305,6 @@ class networkFile : public NNFile
 
 		twoDFloatArray	inputLinkWghts;
 		twoDFloatArray	hiddenLinkWghts;
-//		twoDFloatArray	outputLinkWghts;
 		vector<float> *	hiddenBiases;		// created on readIn deleted at destruction
 		vector<float> * outputBiases;		//	"
 		bool			hasInputBiasNode;	// true if the input layer has a unaryBiasNode i.e. layerModifier(0, biasNode:true)
