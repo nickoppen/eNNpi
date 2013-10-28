@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
 		argvI = argv[i];
 		if (argvI == "-n")
 		{
+				if (theNet != NULL)
+				{
+					cout << "A network was already loaded and has been deleted.\n";
+					delete theNet;
+				}
+
 				try
 				{
 					theNet = new nn(argv[++i]);
@@ -71,7 +77,7 @@ int main(int argc, char *argv[])
 			if (argvI == "-t")
 			{
 				if (theNet == NULL)
-					cout << "A network must be loaded before it is trained";
+					cout << "A network must be loaded before it is trained.\n";
 				else
 					try
 					{
@@ -87,16 +93,16 @@ int main(int argc, char *argv[])
 			}
 			else
 
-				if (argvI == "-r")
+				if ((argvI == "-r") || (argvI == "run"))
 				{
 					if (theNet == NULL)
-						cout << "A network must be loaded before it is run";
+						cout << "A network must be loaded before it is run.\n";
 					else
 						try
 						{
 							theNet->run(argv[++i], &callback_RunComplete);
 
-							cout << "Done with -r\n";
+							cout << "Done with -r or -run\n";
 
 						}
 						catch (format_Error & e)
@@ -108,7 +114,7 @@ int main(int argc, char *argv[])
 					if (argvI == "-s")
 					{
 						if (theNet == NULL)
-							cout << "A network must be loaded before it is saved";
+							cout << "A network must be loaded before it is saved.\n";
 						else
 							try
 							{
@@ -125,9 +131,9 @@ int main(int argc, char *argv[])
 					else
 						if (argvI == "-c")
 						{
-							if (theNet != NULL)		// delete the old network if there is one
+							if (theNet != NULL)
 							{
-								cout << "the net is not null";
+								cout << "A network was already loaded and has been deleted.\n";
 								delete theNet;
 							}
 							try
@@ -161,7 +167,7 @@ int main(int argc, char *argv[])
 	{
 		cout << "\n-n %path load a network from %path\n";
 		cout << "-t %path training set %path\n";
-		cout << "-r %inPath %outPath run from input set from inPath and save the results in outPath\n";
+		cout << "(-r | -run) %inPath %outPath run from input set from inPath and save the results in outPath\n";
 		cout << "-s %path save on %path\n";
 		cout << "-c %i %h %o %n create a new randomised network with %i input nodes %h hidden nodes %o output nodes, called %n\n";
 	}

@@ -213,6 +213,12 @@ class inNode : public virtual nnNode
 	public:
             void						setLinkWeights(vector<float> * weightArray)
                                         {
+//            										unsigned int i;
+//            										cout << "setting weights for node: " << index << "\n";
+//            										for(i=0; i<weightArray->size(); i++)
+//            											cout << i << " " << (*weightArray)[i];
+//            										cout << "\n";
+
                                             for (outLinkI = outLinks->begin(); outLinkI != outLinks->end(); outLinkI++)
                                             {
                                                 (*outLinkI)->setWeight(weightArray->operator[]((*outLinkI)->linkIndex()));

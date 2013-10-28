@@ -8,6 +8,7 @@
 #define _networkDescription_h
 
 #include <string>
+#include <iostream>
 
 const int maxNodes = 64;
 const int maxLayers = 2;	// input layer is layer 0
@@ -65,11 +66,15 @@ class network_description
 //	void				setInputNodes(unsigned int noInputNodes, bool hasInputLayerBiasNode) { inputLayerBiasNode ? inputNodeCount + 1 : inputNodeCount; }
 	void				setHiddenNodes(unsigned int noHiddenNodes) { hiddenNodeCount = noHiddenNodes; }
 	void				setOutputNodes(unsigned int noOutputNodes) { outputNodeCount = noOutputNodes; }
-//	void				hasInputLayerBiasNode(bool inputLayerBiasNode) { return inputLayerBiasNode; }
+	void				setInputLayerBiasNode(bool reallyDoesHaveAnInputBiasNode) { inputLayerBiasNode = reallyDoesHaveAnInputBiasNode; }
 	void				setTrainingLearningRate(float newLearningRate) { learningRate = newLearningRate; }
 	void				setTrainingMomentum(float newMomentum) { momentum = newMomentum; }
     void				setNetworkName(std::string newName) { name = newName; }
+    void				setMomentum(float newMomentum) { momentum = newMomentum; }
 
+
+	protected:
+	float			momentum;
 
 	private:
 	int				bMessageDecodeErr;
@@ -79,7 +84,6 @@ class network_description
 	unsigned int 	outputNodeCount;
 	bool			inputLayerBiasNode;
 	float			learningRate;
-	float			momentum;
 	std::string		name;
 
 };

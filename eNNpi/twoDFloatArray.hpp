@@ -105,15 +105,15 @@ class twoDFloatArray
     					unsigned int vi;
     					unsigned int fi;
 
-    					cout << "lines read: " << arr->size();
+    					outStr << "2D array size: " << arr->size() << "\n";
 
 ///						for(vI = arr->begin(); vI != arr->end(); vI++)
     					for(vi = 0; vi < arr->size(); vi++)
 						{
 //							for(fI = vI->begin(); fI != vI->end(); fI++)
     						for(fi = 0; fi < ((*arr)[vi])->size(); fi++)
-								cout << ((*arr)[vi])->operator[](fi) << " ";
-							cout << "\n";
+    							outStr << ((*arr)[vi])->operator[](fi) << " ";
+    						outStr << "\n";
 						}
 
 					}

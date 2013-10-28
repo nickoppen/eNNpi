@@ -23,7 +23,6 @@ class nn
                             newNet.setTrainingLearningRate(learningRateParam);
                             newNet.setNetworkName(newName);
 
-//                            newNet.hasInputLayerBiasNode(true);	// temporary
                             newNet.setTrainingMomentum((float)0.0);
 
                             setup(newNet);
@@ -35,8 +34,7 @@ class nn
 
                         nn(network_description newNet)
                         {
-                        //	newNet.inputLayerBiasNode = true;	// temporary
-                        //	newNet.momentum = (float)0.0;
+                        	newNet.setMomentum((float)0.0);
 
                             setup(newNet);
                             majorVersion = minorVersion = revision = 0;
@@ -105,7 +103,7 @@ class nn
                         }
             void		run(vector<float> * inputVector, funcRunCallback runComplete = NULL, const int index = 0)
                         {
-                            cout << "running:" << (*inputVector)[0] << "\n";
+//                            cout << "running:" << (*inputVector)[0] << "\n";
 
                             theOutputLayer->waitForActivation();									// set up the semaphores
                             theInputLayer->setInputVector(inputVector);								// set the input nodes with the input vector
@@ -170,7 +168,7 @@ class nn
                             // train
                             try
                             {
-                                cout << "train: " << (*inputVector)[1] << "\n";
+//                                cout << "train: " << (*inputVector)[1] << "\n";
 
                                 theOutputLayer->setDesiredValues(desiredVector);
 
@@ -260,6 +258,8 @@ class nn
             status_t	saveOn(string * strOut)	// save the net in the given existing string
             {
             	stringstream ss;
+
+            	ss.precision(8);
 
                 ss << "version(1,0,0)\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
 

@@ -58,7 +58,11 @@ class inputLayer : public inLayer
                                                 {
                                                     inLayer::biasNode = new unaryBiasNode(net, i);
                                                     nodes->operator[](i) = ((inputNode*)inLayer::biasNode);
+
+//                                                    cout << "inputLayer has bias node\n";
                                                 }
+//                                                else
+//                                                	cout << "input layer does NOT have bias node\n";
                                             }
 
     virtual									~inputLayer()
@@ -72,10 +76,14 @@ class inputLayer : public inLayer
 
     virtual void							setLinkWeights(twoDFloatArray * weightArray)
                                             {
+  //  												cout << "setting input layer weights\n";
+  //  												weightArray->writeOn(cout);
                                                 for (nodeI = nodes->begin(); nodeI != nodes->end(); nodeI++)
                                                 {
                                                     (*nodeI)->setLinkWeights(weightArray->values((*nodeI)->nodeIndex()));
                                                 }
+  //                                              	cout << "input Layer link weights have been set. checking the array again\n";
+  //  												weightArray->writeOn(cout);
                                             }
 
     virtual	void							setNodeBiases(vector<float> * nodeArray) { /* input layers have no biases */ }
@@ -91,12 +99,12 @@ class inputLayer : public inLayer
     virtual void							storeOn(stringstream * strOut)
                                             {
                                                 inLayer::storeOn(strOut);
-                                                int n = 0;
+//                                                int n = 0;
 
-                                                (*strOut) << "comment(Storing the input layer with: " << nodes->size() << " nodes.)\n";
+//                                                (*strOut) << "comment(Storing the input layer with: " << nodes->size() << " nodes.)\n";
                                                 for (nodeI = nodes->begin(); nodeI != nodes->end(); nodeI++)
                                                 {
-                                                	(*strOut) << "comment(" << n++ <<" Input Layer - Storing index: " << nnLayer::index << " node: " << (*nodeI)->nodeIndex() << ")\n";
+//                                                	(*strOut) << "comment(" << n++ <<" Input Layer - Storing index: " << nnLayer::index << " node: " << (*nodeI)->nodeIndex() << ")\n";
                                                     (*nodeI)->storeOn(strOut, nnLayer::index);
                                                 }
                                             }

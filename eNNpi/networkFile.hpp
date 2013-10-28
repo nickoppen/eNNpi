@@ -48,13 +48,8 @@ class networkFile : public NNFile
 
         void			networkDescription(network_description * netDes)	// structure passed in by the caller
                         {
-                            netDes->setStandardInputNodes(net.standardInputNodes());
-                            netDes->setHiddenNodes(net.hiddenNodes());
-                            netDes->setOutputNodes(net.outputNodes());
-                            netDes->setTrainingLearningRate(net.trainingLearningRate());
-                            netDes->setTrainingMomentum(net.trainingMomentum());
- //                           netDes->hasInputLayerBiasNode(net.hasInputLayerBiasNode());
-                        }
+                            (*netDes) = net;
+}
 
         void			networkName(string * netName)
                         {
@@ -107,14 +102,16 @@ class networkFile : public NNFile
                             {
                                 if (verb ==  "link")
                                 {
+                                	status_t rVal;
 #ifdef _DEBUG_
                                         	cout << "Decode Link\n";
  #endif
 
-                                    return decodeLink(&arguements);
-                                    cout << "done Decode Link - dumping\n";
-                                    inputLinkWghts.writeOn(cout);
-                                    cout << "Decode Link done with dump - exit\n";
+                                    rVal = decodeLink(&arguements);
+//                                    cout << "done Decode Link - dumping\n";
+//                                    inputLinkWghts.writeOn(cout);
+//                                    cout << "Decode Link done with dump - exit\n";
+                                    return rVal;
                                 }
                                 if (verb ==  "node")
                                 {
@@ -162,9 +159,8 @@ class networkFile : public NNFile
 #ifdef _DEBUG_
                                         	cout << "Decode Layer mod\n";
 #endif
-                                    hasInputBiasNode = true;
-                                    inputLinkWghts.redimension(net.standardInputNodes() + 1, net.hiddenNodes());
-                                    return SUCCESS;
+                                        	// need to actually decode the layerModifer clause
+                                    return decodeLayerModifier(&arguements);
                                 }
 
                                 errMessage = ENN_ERR_UNK_KEY_WORD;
@@ -275,9 +271,6 @@ class networkFile : public NNFile
                             outputBiases = new vector<float>(net.outputNodes());
                             inputLinkWghts.dimension(net.inputNodes(), net.hiddenNodes());
                             hiddenLinkWghts.dimension(net.hiddenNodes(), net.outputNodes());
-#ifdef _DEBUG_
-                                        	cout << "Topo: inputNodes" << net.hiddenNodes() << " hiddenNodes-" << net.hiddenNodes() << " outputNodes-" << net.outputNodes() << "\n";
-#endif
 
                             return returnVal;
                         }
@@ -297,6 +290,43 @@ class networkFile : public NNFile
 
                             return SUCCESS;
                         }
+
+        status_t		decodeLayerModifier(string * strBracket)
+						{
+        					unsigned int whichLayer;
+        					string modifier = "";
+        					string value = "";
+        					std::string::size_type	startPos = 1;
+
+        					whichLayer = nextUIValue(strBracket, startPos);
+        					keyValue(strBracket, startPos, modifier, value);
+
+        					cout << "key<" << modifier << "> val:" << value << "\n";
+        					if (modifier == "biasNode")
+        					{
+								if (whichLayer == 0)	// expand to include all but output layer
+								{
+									if (value == "true")
+									{
+										inputLinkWghts.redimension(net.standardInputNodes() + 1, net.hiddenNodes());
+										net.setInputLayerBiasNode(true);
+										cout << "Input layer has bias node.\n";
+									}
+									else
+									{
+										net.setInputLayerBiasNode(false);
+										cout << "Input layer has NO bias node.\n";
+									}
+								}
+								else
+									throw format_Error(ENN_ERR_BIAS_NODE_ON_INVALID_LAYER);
+        					}
+        					else
+        						throw format_Error(ENN_ERR_UNK_MODIFIER);
+
+        					return SUCCESS;
+
+						}
 
 	private:
 		unsigned int	major;

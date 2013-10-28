@@ -126,6 +126,36 @@ class NNFile
 
                                     }
 
+            status_t				keyValue(string* line, std::string::size_type & startPos, string & key, string & value, const char separator = ':', const char limiter = ',')
+									{
+										std::size_t sepPos;
+										std::size_t endPos;
+
+										sepPos = line->find(separator, startPos);
+//										cout <<"the separator " << separator << " was at:" <<sepPos << "\n";
+										if (sepPos > 1)
+										{
+											key = line->substr(startPos, sepPos - startPos);
+											endPos = line->find(limiter, sepPos + 1);
+//											cout << "After looking for a " << limiter << " endPos was:" << endPos << "\n";
+											if ((endPos < startPos) || (endPos > line->size()))		// there are no more modifiers
+											{
+												endPos = line->find(')', sepPos);
+//												cout << "did not find a , a ) at" << endPos << "\n";
+												startPos = 0;
+											}
+											else
+												startPos = endPos++; // return the begining of the next key:value pair
+
+											value = line->substr(sepPos+1, (endPos - 1) - (sepPos + 1));
+
+											return SUCCESS;
+										}
+										else
+											throw format_Error(ENN_ERR_KEY_VALUE_FORMAT_ERROR);
+
+									}
+
             status_t				decodeNetworkTopology(string * fragment)
                                     {
             							std::string::size_type	startPos = 1;

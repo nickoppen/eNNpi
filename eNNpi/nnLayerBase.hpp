@@ -41,11 +41,15 @@ class inLayer : public nnLayer
 		{
 			if (net.hasInputLayerBiasNode())
 			{
-	//			biasNode = new unaryBiasNode(net, -1);
+				// the biasNode is created and stored in the inputlayer constructor
 				hasBias = true;
+//				cout << "setting inNode::hasBias = true\n";
 			}
 			else
+			{
 				hasBias = false;
+//				cout<<"setting inNode::hasBias = false\n";
+			}
 		}
 
 		virtual				~inLayer() {  }
@@ -54,9 +58,9 @@ class inLayer : public nnLayer
 		virtual void		storeOn(stringstream * strOut)
 		{
 			if (hasBias)
-			{
-				(*strOut) << "layerModifier(0, biasNode:true)\n";
-			}
+				(*strOut) << "layerModifier(0,biasNode:true)\n";
+			else
+				(*strOut) << "layerModifier(0,biasNode:false)\n";
 		}
 
 	protected:

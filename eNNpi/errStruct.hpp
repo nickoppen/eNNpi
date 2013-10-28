@@ -16,6 +16,9 @@ const char ENN_ERR_LAYER_DOES_NOT_EXIST[] = "Layer does not exist";
 const char ENN_ERR_NON_FILE[] = "This file does not seem to be a eNN file";
 const char ENN_ERR_LINK_ON_OUTPUT[] = "Link value recorded for output node";
 const char ENN_ERR_LINE_DECODE_FAILED[] = "Did not find expected line delimiter";
+const char ENN_ERR_UNK_MODIFIER[] = "Unknown Layer Modifier";
+const char ENN_ERR_BIAS_NODE_ON_INVALID_LAYER[] = "Bias node requested on an output only node";
+const char ENN_ERR_KEY_VALUE_FORMAT_ERROR[] = "Key:Value format error";
 
 struct format_Error
 {
