@@ -13,6 +13,8 @@
 const int maxNodes = 64;
 const int maxLayers = 2;	// input layer is layer 0
 
+enum layer_modifier { BIAS_NODE };
+
 class network_description
 {
 	public:
@@ -25,6 +27,7 @@ class network_description
                             outputNodeCount = outputNodes;
                             learningRate = newLearningRate;
                             name = "network-addTopology";
+                            inputLayerBiasNode = false;
                         }
 
                         network_description(int inputNodes, int hiddenNodes, int outputNodes, float newLearningRate, const std::string netName)
@@ -34,6 +37,7 @@ class network_description
                             outputNodeCount = outputNodes;
                             learningRate = newLearningRate;
                             name = netName;
+                            inputLayerBiasNode = false;
                         }
 
                         ~network_description() {}
@@ -46,6 +50,7 @@ class network_description
                             learningRate = other.learningRate;
                             momentum = other.momentum;
                             inputLayerBiasNode = other.inputLayerBiasNode;
+                            name = other.name;
 
                             return other;
                         }

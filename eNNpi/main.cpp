@@ -17,10 +17,16 @@ void callback_TrainingComplete(void * caller)
 	vector<float> * errVec;	// created by the net
 	unsigned int i;
 
-	errVec = ((nn*)caller)->trainingError();
-	for(i = 0; i< errVec->size(); i++)
-		cout << i << ": " << (*errVec)[i];
-	cout << "\nDone with Training\n";
+	errVec = new vector<float>(((nn*)caller)->outputNodes());
+
+	if ( ((nn*)caller)->trainingError(errVec) == SUCCESS)
+	{
+		for(i = 0; i< errVec->size(); i++)
+			cout << i << ": " << (*errVec)[i];
+		cout << "\nDone with Training\n";
+	}
+	else
+		cout << "Error: failed to retrieve the error vector.\n";
 }
 
 int main(int argc, char *argv[])
@@ -44,6 +50,8 @@ int main(int argc, char *argv[])
 	 * -n %path network Path
 	 * -t %path training set path
 	 * -r %path run from input set in path
+	 * -rand randomise the network
+	 * -a alter the network
 	 * -s %path save on path
 	 * -c %i %h %o %n create a new randomised network with %i input nodes %h hidden nodes %o output nodes, called %n
 	 */
@@ -145,7 +153,6 @@ int main(int argc, char *argv[])
 								strArg = argv[++i];
 								cout << in << " " << out << " " << hidden << " " << strArg << "\n";
 								theNet = new nn(in, out, hidden, fVal, strArg);
-								theNet->randomise();
 
 								cout << "Done with -c\n";
 
@@ -156,10 +163,72 @@ int main(int argc, char *argv[])
 							}
 						}
 						else
-						{
-							unknownFlag = true;
-							cout << "Don't know that one:" << argvI << "\n";
-						}
+							if (argvI == "-rand")
+							{
+								if (theNet == NULL)
+									cout << "A network must be loaded before it is randomised.\n";
+								else
+									try
+									{
+										theNet->randomise();
+
+										cout << "Done with -rand\n";
+
+									}
+									catch (format_Error & e)
+									{
+										cout << e.mesg << "\n";
+									}
+
+							}
+							else
+								if (argvI == "-at")
+								{
+									if (theNet == NULL)
+										cout << "A network must be loaded before it is altered.\n";
+									else
+										try
+										{
+											in = atoi(argv[++i]);
+											hidden = atoi(argv[++i]);
+											out = atoi(argv[++i]);
+											cout << in << " " << out << " " << hidden << " " << "\n";
+											theNet->alter(in, hidden, out);
+
+											cout << "Done with -at\n";
+
+										}
+										catch (format_Error & e)
+										{
+											cout << e.mesg << "\n";
+										}
+
+								}
+								else
+									if (argvI == "-am")
+									{
+										if (theNet == NULL)
+											cout << "A network must be loaded before it is altered.\n";
+										else
+											try
+											{
+												cout << argv[++i] << " " << argv[++i] << " not specifically decoded\n";
+												theNet->alter((unsigned int)1, BIAS_NODE, true);
+
+												cout << "Done with -am\n";
+
+											}
+											catch (format_Error & e)
+											{
+												cout << e.mesg << "\n";
+											}
+
+									}
+									else
+									{
+										unknownFlag = true;
+										cout << "Don't know that one:" << argvI << "\n";
+									}
 
 	}
 
@@ -168,8 +237,11 @@ int main(int argc, char *argv[])
 		cout << "\n-n %path load a network from %path\n";
 		cout << "-t %path training set %path\n";
 		cout << "(-r | -run) %inPath %outPath run from input set from inPath and save the results in outPath\n";
-		cout << "-s %path save on %path\n";
+		cout << "-rand randomise the network\n";
+		cout << "-s %path save on %path (with no trailing //\n";
 		cout << "-c %i %h %o %n create a new randomised network with %i input nodes %h hidden nodes %o output nodes, called %n\n";
+		cout << "-at % %h %o alter the topology to be %i input nodes %h hidden nodes %o output nodes\n";
+		cout << "-am 1 (biasNode:true OR biasNode:false) add or remove an input bias node to layer one\n";
 	}
 	if (theNet != NULL)
 		delete theNet;

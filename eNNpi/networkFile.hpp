@@ -6,7 +6,7 @@
 class networkFile : public NNFile
 {
 		public:
-                        networkFile(fstream * theFile) : NNFile(theFile)
+                        networkFile(ifstream * theFile) : NNFile(theFile)
                         {
                             hiddenBiases = NULL;
                             outputBiases = NULL;
@@ -28,7 +28,7 @@ class networkFile : public NNFile
                                 delete outputBiases;
                         }
 
-        void			setTo(fstream * theFile)
+        void			setTo(ifstream * theFile)
                         {
                             if (hiddenBiases != NULL)
                                 delete hiddenBiases;

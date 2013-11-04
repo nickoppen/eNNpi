@@ -21,7 +21,7 @@ class dataFile :  public NNFile
                         inputArray = NULL;
                     }
 
-                    dataFile(fstream * theFile) : NNFile(theFile)
+                    dataFile(ifstream * theFile) : NNFile(theFile)
                     {
                         lineCount = 0;
                         inputArray = NULL;
@@ -67,7 +67,7 @@ class inputFile : public dataFile
 {
 	public:
                     inputFile() : dataFile() { }
-                    inputFile(fstream * theFile) : dataFile(theFile) { }
+                    inputFile(ifstream * theFile) : dataFile(theFile) { }
                     virtual ~inputFile() // : ~dataFile()
                     { }
 	
@@ -114,7 +114,7 @@ class inputFile : public dataFile
                         else
                             throw format_Error(ENN_ERR_NON_FILE);
 
-                        return FAIL; // will not happen
+                        return FAILURE; // will not happen
                     }
 
     status_t		decodeInputVector(string * fragment, vector<float> * lineVector)
@@ -157,7 +157,7 @@ class trainingFile : public dataFile
                         outputArray = NULL;
                     }
 
-                    trainingFile(fstream * theFile) : dataFile(theFile)
+                    trainingFile(ifstream * theFile) : dataFile(theFile)
                     {
                         outputArray = NULL;
                     }
@@ -226,7 +226,7 @@ class trainingFile : public dataFile
                         else
                             throw format_Error(ENN_ERR_NON_FILE);
 
-                        return FAIL; // will not happen
+                        return FAILURE; // will not happen
                     }
 
     status_t		decodeTrainingVector(string * fragment, vector<float> * inVector, vector<float> * outVector)

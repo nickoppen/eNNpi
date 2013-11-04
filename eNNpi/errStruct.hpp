@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-enum status_t { FAIL, SUCCESS };
+enum status_t { FAILURE, SUCCESS };
 
 const char ENN_ERR_UNK_KEY_WORD[] = "Unknown Key Word";
 const char ENN_ERR_LINE_TOO_LONG[] = "Line too long";
@@ -13,7 +13,7 @@ const char ENN_ERR_TOO_MANY_LAYERS[] = "Too many layers recorded in network file
 const char ENN_ERR_INPUT_NODE_BIAS_REQUESTED[] = "Input Nodes have no biases";
 const char ENN_ERR_INPUT_NODE_WEIGHT_REQUESTED[] = "Input Nodes have no weights";
 const char ENN_ERR_LAYER_DOES_NOT_EXIST[] = "Layer does not exist";
-const char ENN_ERR_NON_FILE[] = "This file does not seem to be a eNN file";
+const char ENN_ERR_NON_FILE[] = "This file does not seem to be a eNN file or the file does not exist";
 const char ENN_ERR_LINK_ON_OUTPUT[] = "Link value recorded for output node";
 const char ENN_ERR_LINE_DECODE_FAILED[] = "Did not find expected line delimiter";
 const char ENN_ERR_UNK_MODIFIER[] = "Unknown Layer Modifier";
@@ -24,7 +24,14 @@ struct format_Error
 {
 	const char * mesg;
 	format_Error(const char * message) { mesg = message; }
-//	format_Error(const char * message, const char * extra) { mesg = extra; }	// append two parts together
+/*	format_Error(const char * message, const char * extra)
+	{
+		static char * buffer[255];
+
+		sprintf(buffer, "%s %s", message, extra);
+		mesg = buffer;
+	}	// append two parts together
+ */
 };
 
 const char ENN_ERR_TRAIN_WAITFORTRAIN[] = "Zero return from ResetEvent";

@@ -1,6 +1,8 @@
 #ifndef _nn_h
 #define _nn_h
 
+#include <sys/stat.h> // POSIX only
+
 #include <sstream>
 #include <random>
 #include "networkFile.hpp"
@@ -17,13 +19,13 @@ class nn
                         {
                             network_description newNet;
 
-                            newNet.setHiddenNodes(hiddenLayerWidth);
-                            newNet.setOutputNodes(outputLayerWidth);
-                            newNet.setStandardInputNodes(inputLayerWidth);
                             newNet.setTrainingLearningRate(learningRateParam);
                             newNet.setNetworkName(newName);
 
                             newNet.setTrainingMomentum((float)0.0);
+                            newNet.setHiddenNodes(hiddenLayerWidth);
+                            newNet.setOutputNodes(outputLayerWidth);
+                            newNet.setStandardInputNodes(inputLayerWidth);
 
                             setup(newNet);
 
@@ -48,14 +50,18 @@ class nn
 
                         nn(const char * cstrFilename)
                         {
-                        	fstream * pFile;
+                        	ifstream * pFile;
                         	networkFile * nFile;
 
-    						pFile = new fstream(cstrFilename);
-    						nFile = new networkFile(pFile);
-    						nFile->readInFile();
-    						setNetworkFile(nFile);
-
+                            if (checkExists(cstrFilename))
+							{
+								pFile = new ifstream(cstrFilename);
+								nFile = new networkFile(pFile);
+								nFile->readInFile();
+								setNetworkFile(nFile);
+							}
+                            else
+                            	throw format_Error(ENN_ERR_NON_FILE);
                         }
 
                         nn(string * strFilename)
@@ -80,14 +86,19 @@ class nn
 			void		run(const char * cstrFilename, funcRunCallback runComplete = NULL)
                         {
                             inputFile * inFile;
-                            fstream * pFile;
+                            ifstream * pFile;
 
-                            pFile = new fstream(cstrFilename);
-                            inFile = new inputFile(pFile);
-                            inFile->readInFile();
-                            run(inFile, runComplete);
-                            delete inFile;
-                            delete pFile;
+                            if (checkExists(cstrFilename))
+							{
+								pFile = new ifstream(cstrFilename);
+								inFile = new inputFile(pFile);
+								inFile->readInFile();
+								run(inFile, runComplete);
+								delete inFile;
+								delete pFile;
+							}
+                            else
+                            	throw format_Error(ENN_ERR_NON_FILE);
                         }
 
 			void		run(inputFile * inFile, funcRunCallback runComplete = NULL)		// call back because running is asychronous
@@ -136,15 +147,20 @@ class nn
 
             void		train(const char * cstrFilename, funcTrainCallback trComplete = NULL)
                         {
-                            fstream * pFile;
+                            ifstream * pFile;
                             trainingFile * trFile;
 
-                            pFile = new fstream(cstrFilename);
-                            trFile = new trainingFile(pFile);
-                            trFile->readInFile();
-                            train(trFile, trComplete);
-                            delete pFile;
-                            delete trFile;
+                            if (checkExists(cstrFilename))
+							{
+								pFile = new ifstream(cstrFilename);
+								trFile = new trainingFile(pFile);
+								trFile->readInFile();
+								train(trFile, trComplete);
+								delete pFile;
+								delete trFile;
+							}
+                            else
+                            	throw format_Error(ENN_ERR_NON_FILE);
 
                         }
 
@@ -155,6 +171,8 @@ class nn
 
                             for (i=0; i < trFile->inputLines(); i++)
                                 train(trFile->inputSet(i), trFile->outputSet(i));	// don't pass the call back because we only want it called at the end not after each training set
+
+                            incrementRevision();
 
                             if (trComplete != NULL)
                                 trComplete((void*)this);
@@ -189,59 +207,76 @@ class nn
                             }
 
                             hasChanged = true;
-                            revision++;
                         }
 
-            vector<float> *	trainingError()
-            {
-                vector<float> * errorVector;
-                errorVector = new vector<float>(net.outputNodes());	// leave empty for now
-                theOutputLayer->trainingError(errorVector);
-                return errorVector;
-            }
+            status_t	trainingError(vector<float> * errorVector)
+            			// the errorVector must exist and be the right size
+						{
+            				if (errorVector->size() != net.outputNodes())
+            					return FAILURE;
+            				else
+            					theOutputLayer->trainingError(errorVector);
+							return SUCCESS;
+						}
 
             void		test(vector<float> * inputVector, vector<float> * desiredOutput, vector<float> * errorVector)
-            {
-                // run
-                run(inputVector);
+						{
+            				size_t i;
+							// run
+							run(inputVector);
 
-                // compare
-                theOutputLayer->setDesiredValues(desiredOutput);
-                errorVector = trainingError();
+							// block til value
 
-            }
+							// compare
+							theOutputLayer->returnOutputVector(errorVector);
+
+							for (i = 0; i != errorVector->size(); i++)
+								(*errorVector)[i] = (*errorVector)[i] - (*desiredOutput)[i];
+						}
 
             void		randomise()
-            {
-                random_device rd;
-                theHiddenLayer->randomise(rd);
-                theOutputLayer->randomise(rd);
+						{
+							random_device rd;
+							theHiddenLayer->randomise(rd);
+							theOutputLayer->randomise(rd);
 
-                hasChanged = true;
-                minorVersion++;
-                revision = 0;
-            }
+							hasChanged = true;
+							incrementMinorVersion();
+						}
 
 	// access
 			network_description * networkDescription() { return & net; }
+			unsigned int inputNodes() { return net.inputNodes(); }
+			unsigned int hiddenNodes() { return net.hiddenNodes(); }
+			unsigned int outputNodes() { return net.outputNodes(); }
 
-			status_t 	saveTo(string * strFile)
+			status_t 	saveTo(string * strPath)
 			{
-				return saveTo(strFile->c_str());
+				return saveTo(strPath->c_str());
 			}
 
-			status_t	saveTo(const char * cstrFile)
+			status_t	saveTo(const char * cstrPath)
 			{
 				fstream * pFile;
 				status_t rVal;
+				char cstrPathFile[] = "                                        ";	// dumb
+				char cstrFileName[] = "                                ";			// dumb
 
-				pFile = new fstream();
-				pFile->open(cstrFile, ios::out);
-				rVal = saveTo(pFile);
-				pFile->close();
-				delete pFile;
+				if (checkExists(cstrPath, false))
+				{
+					sprintf(cstrPathFile, "%s//%s", cstrPath, defaultName(cstrFileName));
+					cout << "saving to <" << cstrPathFile << "> " << majorVersion << " " << minorVersion << " " << revision << "\n";
 
-				return rVal;
+					pFile = new fstream();
+					pFile->open(cstrPathFile, ios::out);
+					rVal = saveTo(pFile);
+					pFile->close();
+					delete pFile;
+
+					return rVal;
+				}
+				else
+					throw format_Error(ENN_ERR_NON_FILE);
 			}
 
 			status_t	saveTo(fstream * pFile)
@@ -252,6 +287,67 @@ class nn
 				(*pFile) << strContent;
 
 				return rVal;
+			}
+
+	// Modify
+			status_t	alter(int newIn, int newHidden, int newOut)
+			{
+				unsigned int layerNo = 0;
+
+				delete theInputLayer;
+				delete theHiddenLayer;
+				delete theOutputLayer;
+
+                net.setHiddenNodes(newHidden);
+                net.setOutputNodes(newOut);
+                net.setStandardInputNodes(newIn);
+
+                theInputLayer = new inputLayer(net, layerNo++);
+                theHiddenLayer = new hiddenLayer(net, layerNo++);
+                theOutputLayer = new outputLayer(net, layerNo++);
+
+                theInputLayer->connectNodes(theHiddenLayer->nodeList());
+                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
+
+                randomise();
+                incrementMajorVersion();
+
+				return SUCCESS;
+			}
+
+			status_t	alter(network_description * newTopo)
+			{
+
+				delete theInputLayer;
+				delete theHiddenLayer;
+				delete theOutputLayer;
+
+				setup(*newTopo);
+
+				randomise();
+                incrementMajorVersion();
+
+                return SUCCESS;
+			}
+
+			status_t	alter(unsigned int layer, layer_modifier mod, bool boolAdd = true)
+			{
+				network_description newNet;
+
+				newNet = net;	// keep all the old values
+
+				delete theInputLayer;
+				delete theHiddenLayer;
+				delete theOutputLayer;
+
+                newNet.setInputLayerBiasNode(boolAdd);
+
+                setup(newNet);
+
+                randomise();
+                incrementMajorVersion();
+
+                return SUCCESS;
 			}
 
 	// save to disk
@@ -279,15 +375,16 @@ class nn
                 return SUCCESS;
             }
 
-            void		defaultName(string & name)
+            char *	defaultName(char * buffer)
+            // the calling function must make sure that there is enough room in the buffer
             {
-            	stringstream ss;
+            	sprintf(buffer, "%s_%d_%d_%d.enn", networkName.c_str(), majorVersion, minorVersion, revision);
 
-            	ss << "Network-" << majorVersion <<  "-" << minorVersion << "-" << revision;
-            	name = ss.str();
+            	return buffer;
             }
 
 			bool		needsSaving() { return hasChanged; }
+
 	// test
             void		testNN()
             {
@@ -295,13 +392,13 @@ class nn
 
             }
 
+
+    // Setup
+	private:
             void		incrementRevision() { revision++; }
             void		incrementMinorVersion() { minorVersion++; revision = 0; }
             void		incrementMajorVersion() { majorVersion++; minorVersion = revision = 0; }
 
-
-    // Setup
-	private:
             void		setup(network_description newNet)
             {
                 unsigned int layerNo = 0;
@@ -322,9 +419,6 @@ class nn
             {
                 nFile->networkDescription(&net);
 
-            //	net.inputLayerBiasNode = true;	// temporary
-            //	net.momentum = (float)0.0;
-
                 setup(net);
 
                 theInputLayer->setLinkWeights(nFile->linkWeights(0));
@@ -340,6 +434,20 @@ class nn
                 nFile->networkName(&networkName);
 
                 nnNode::setLearningParameters(net.trainingLearningRate(), net.trainingMomentum());
+
+            }
+    // Other
+            bool checkExists(const char * fileName, bool boolShouldBeFile = true)
+            {
+            	struct stat fileAtt;
+
+            	if (stat(fileName, &fileAtt) != 0)
+            		return false;
+            	else
+            		if (boolShouldBeFile)
+            			return S_ISREG(fileAtt.st_mode);
+            		else
+            			return S_ISDIR(fileAtt.st_mode);
 
             }
 			

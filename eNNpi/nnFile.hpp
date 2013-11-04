@@ -22,7 +22,7 @@ class NNFile
                                         errMessage = "";
                                     }
 
-                                    NNFile(fstream * theFile)
+                                    NNFile(ifstream * theFile)
                                     {
                                         pFile = theFile;
                                         errMessage = "";
@@ -33,7 +33,7 @@ class NNFile
                                         // the file is closed and deleted by the calling application
                                     }
 		
-            status_t				setTo(fstream * theFile)
+            status_t				setTo(ifstream * theFile)
                                     {
                                         pFile = theFile;
                                         return SUCCESS;
@@ -132,22 +132,19 @@ class NNFile
 										std::size_t endPos;
 
 										sepPos = line->find(separator, startPos);
-//										cout <<"the separator " << separator << " was at:" <<sepPos << "\n";
 										if (sepPos > 1)
 										{
 											key = line->substr(startPos, sepPos - startPos);
 											endPos = line->find(limiter, sepPos + 1);
-//											cout << "After looking for a " << limiter << " endPos was:" << endPos << "\n";
 											if ((endPos < startPos) || (endPos > line->size()))		// there are no more modifiers
 											{
 												endPos = line->find(')', sepPos);
-//												cout << "did not find a , a ) at" << endPos << "\n";
 												startPos = 0;
 											}
 											else
 												startPos = endPos++; // return the begining of the next key:value pair
 
-											value = line->substr(sepPos+1, (endPos - 1) - (sepPos + 1));
+											value = line->substr(sepPos+1, endPos - (sepPos + 1));
 
 											return SUCCESS;
 										}
@@ -173,7 +170,7 @@ class NNFile
 
 
 			network_description		net;
-            fstream	*				pFile;		// temporary storage deleted by the doc
+            ifstream	*				pFile;		// temporary storage deleted by the doc
             string					errMessage;
 };
 
