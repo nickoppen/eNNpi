@@ -301,7 +301,7 @@ class networkFile : public NNFile
         					whichLayer = nextUIValue(strBracket, startPos);
         					keyValue(strBracket, startPos, modifier, value);
 
-        					cout << "key<" << modifier << "> val:" << value << "\n";
+//        					cout << "key<" << modifier << "> val:" << value << "\n";
         					if (modifier == "biasNode")
         					{
 								if (whichLayer == 0)	// expand to include all but output layer
@@ -310,12 +310,12 @@ class networkFile : public NNFile
 									{
 										inputLinkWghts.redimension(net.standardInputNodes() + 1, net.hiddenNodes());
 										net.setInputLayerBiasNode(true);
-										cout << "Input layer has bias node.\n";
+//										cout << "Input layer has bias node.\n";
 									}
 									else
 									{
 										net.setInputLayerBiasNode(false);
-										cout << "Input layer has NO bias node.\n";
+//										cout << "Input layer has NO bias node.\n";
 									}
 								}
 								else

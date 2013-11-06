@@ -11,6 +11,7 @@
 
 typedef void (*funcRunCallback)(const int, void *);
 typedef void (*funcTrainCallback)(void *);
+typedef void (*funcTestCallback)(vector<float>*, void *);
 
 class nn
 {
@@ -71,6 +72,7 @@ class nn
 
                         ~nn()
                         {
+                        	delete errorVector;
                             delete theInputLayer;
                             delete theHiddenLayer;
                             delete theOutputLayer;
@@ -180,12 +182,12 @@ class nn
 
             void		train(vector<float> * inputVector, vector<float> * desiredVector, funcTrainCallback trComplete = NULL)
                         {
-                            // run
-                            run(inputVector);
-
                             // train
                             try
                             {
+                                // run
+                                run(inputVector);
+
 //                                cout << "train: " << (*inputVector)[1] << "\n";
 
                                 theOutputLayer->setDesiredValues(desiredVector);
@@ -219,7 +221,40 @@ class nn
 							return SUCCESS;
 						}
 
-            void		test(vector<float> * inputVector, vector<float> * desiredOutput, vector<float> * errorVector)
+        	// test
+            void		test(string * strTestFilename, funcTestCallback testComplete = NULL)
+						{
+							test(strTestFilename->c_str(), testComplete);
+						}
+
+            void		test(const char * cstrTestFilename, funcTestCallback testComplete = NULL)
+						{
+							ifstream * pFile;
+							trainingFile * tstFile;
+
+							if (checkExists(cstrTestFilename))
+							{
+								pFile = new ifstream(cstrTestFilename);
+								tstFile = new trainingFile(pFile);
+								tstFile->readInFile();
+								test(tstFile, testComplete);
+								delete pFile;
+								delete tstFile;
+							}
+							else
+								throw format_Error(ENN_ERR_NON_FILE);
+						}
+
+            void		test(trainingFile * testFile, funcTestCallback testComplete = NULL)
+						{
+							unsigned int i;
+
+							for (i=0; i < testFile->inputLines(); i++)
+								test(testFile->inputSet(i), testFile->outputSet(i), testComplete);
+
+						}
+
+            void		test(vector<float> * inputVector, vector<float> * desiredOutput, funcTestCallback testComplete = NULL)
 						{
             				size_t i;
 							// run
@@ -232,6 +267,9 @@ class nn
 
 							for (i = 0; i != errorVector->size(); i++)
 								(*errorVector)[i] = (*errorVector)[i] - (*desiredOutput)[i];
+
+							if (testComplete != NULL)
+								testComplete(errorVector, (void*)this);
 						}
 
             void		randomise()
@@ -265,7 +303,7 @@ class nn
 				if (checkExists(cstrPath, false))
 				{
 					sprintf(cstrPathFile, "%s//%s", cstrPath, defaultName(cstrFileName));
-					cout << "saving to <" << cstrPathFile << "> " << majorVersion << " " << minorVersion << " " << revision << "\n";
+//					cout << "saving to <" << cstrPathFile << "> " << majorVersion << " " << minorVersion << " " << revision << "\n";
 
 					pFile = new fstream();
 					pFile->open(cstrPathFile, ios::out);
@@ -385,12 +423,6 @@ class nn
 
 			bool		needsSaving() { return hasChanged; }
 
-	// test
-            void		testNN()
-            {
-                    // not implemented yet
-
-            }
 
 
     // Setup
@@ -411,6 +443,8 @@ class nn
 
                 theInputLayer->connectNodes(theHiddenLayer->nodeList());
                 theHiddenLayer->connectNodes(theOutputLayer->nodeList());
+
+                errorVector = new vector<float>(newNet.outputNodes());	// deleted in the destructor
 
                 randomise();
             }
@@ -460,6 +494,9 @@ class nn
 	
 	// house keeping
 	bool				hasChanged;					// set to true after randomisaton or training
+
+	// testing
+	vector<float>	*	errorVector;				// pass a pointer to this vector in the test callback
 
 	// identificaton
 	unsigned int		majorVersion;
