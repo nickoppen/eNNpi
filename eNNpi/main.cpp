@@ -6,11 +6,13 @@ void callback_RunComplete(const int index, void * caller)
 	vector<float> * resVec;	// created by the net
 	unsigned int i;
 
-	resVec = ((nn*)caller)->runResult();
-	cout << "Index: " << index << " results - ";
+	resVec = new vector<float>(((nn*)caller)->outputNodes());
+	resVec = ((nn*)caller)->runResult(resVec);
+	cout << "Index: " << index << " results -";
 	for(i = 0; i< resVec->size(); i++)
-		cout << i << ": " << (*resVec)[i];
+		cout << " " << i << ": " << (*resVec)[i];
 	cout << "\n";
+	delete resVec;
 }
 
 void callback_TrainingComplete(void * caller)
@@ -22,22 +24,44 @@ void callback_TrainingComplete(void * caller)
 
 	if ( ((nn*)caller)->trainingError(errVec) == SUCCESS)
 	{
-		cout << "Last Training Error Vector - ";
+		cout << "Last Training Error Vector -";
 		for(i = 0; i< errVec->size(); i++)
-			cout << i << ": " << (*errVec)[i];
+			cout << " " << i << ": " << (*errVec)[i];
 		cout << "\n";
 	}
 	else
 		cout << "Error: failed to retrieve the error vector.\n";
+
+	delete errVec;
 }
 
-void callback_TestComplete(vector<float> * errVec, void * caller)
+void callback_TestComplete(const int index, vector<float>* inputVector, vector<float>* desiredOutput, vector<float>* actualOutput, vector<float> * errVec, void * caller)
 {
 	unsigned int i;
 
-	cout << "Test Results - ";
+	if (index == 0)		// title row
+	{
+		cout << "Index";
+		for(i = 0; i< inputVector->size(); i++)
+			cout << "\tInput:" << i;
+		for(i = 0; i< desiredOutput->size(); i++)
+			cout << "\tDesired:" << i;
+		for(i = 0; i< actualOutput->size(); i++)
+			cout << "\tActual:" << i;
+		for(i = 0; i< errVec->size(); i++)
+			cout << "\tError:" << i;
+		cout << "\n";
+	}
+
+	cout << index;
+	for(i = 0; i< inputVector->size(); i++)
+		cout << "\t" << (*inputVector)[i];
+	for(i = 0; i< desiredOutput->size(); i++)
+		cout << "\t" << (*desiredOutput)[i];
+	for(i = 0; i< actualOutput->size(); i++)
+		cout << "\t" << (*actualOutput)[i];
 	for(i = 0; i< errVec->size(); i++)
-		cout << i << ": " << (*errVec)[i];
+		cout << "\t" << (*errVec)[i];
 	cout << "\n";
 }
 
@@ -50,6 +74,7 @@ int main(int argc, char *argv[])
 	int in, out, hidden;
 	float fVal;
 	bool unknownFlag = false;
+	bool quiet = false;
 
 
 	int i;
@@ -71,7 +96,8 @@ int main(int argc, char *argv[])
 				{
 					theNet = new nn(argv[++i]);
 
-					cout << "Done with -n\n";
+					if (!quiet)
+						cout << "Done with -n\n";
 
 				}
 				catch (format_Error & e)
@@ -90,7 +116,8 @@ int main(int argc, char *argv[])
 					{
 						theNet->train(argv[++i], &callback_TrainingComplete);
 
-						cout << "Done with -t\n";
+						if (!quiet)
+							cout << "Done with -t\n";
 
 					}
 					catch (format_Error & e)
@@ -100,7 +127,7 @@ int main(int argc, char *argv[])
 			}
 			else
 
-				if ((argvI == "-r") || (argvI == "run"))
+				if ((argvI == "-r") || (argvI == "-run"))
 				{
 					if (theNet == NULL)
 						cout << "A network must be loaded before it is run.\n";
@@ -109,7 +136,8 @@ int main(int argc, char *argv[])
 						{
 							theNet->run(argv[++i], &callback_RunComplete);
 
-							cout << "Done with -r or -run\n";
+							if (!quiet)
+								cout << "Done with -r or -run\n";
 
 						}
 						catch (format_Error & e)
@@ -127,7 +155,8 @@ int main(int argc, char *argv[])
 							{
 								theNet->saveTo(argv[++i]);
 
-								cout << "Done with -s\n";
+								if (!quiet)
+									cout << "Done with -s\n";
 
 							}
 							catch (format_Error & e)
@@ -150,10 +179,10 @@ int main(int argc, char *argv[])
 								hidden = atoi(argv[++i]);
 								fVal = 0.1;
 								strArg = argv[++i];
-//								cout << in << " " << out << " " << hidden << " " << strArg << "\n";
 								theNet = new nn(in, out, hidden, fVal, strArg);
 
-								cout << "Done with -c\n";
+								if (!quiet)
+									cout << "Done with -c\n";
 
 							}
 							catch (format_Error & e)
@@ -171,7 +200,8 @@ int main(int argc, char *argv[])
 									{
 										theNet->randomise();
 
-										cout << "Done with -rand\n";
+										if (!quiet)
+											cout << "Done with -rand\n";
 
 									}
 									catch (format_Error & e)
@@ -191,10 +221,10 @@ int main(int argc, char *argv[])
 											in = atoi(argv[++i]);
 											hidden = atoi(argv[++i]);
 											out = atoi(argv[++i]);
-//											cout << in << " " << out << " " << hidden << " " << "\n";
 											theNet->alter(in, hidden, out);
 
-											cout << "Done with -at\n";
+											if (!quiet)
+												cout << "Done with -at\n";
 
 										}
 										catch (format_Error & e)
@@ -222,8 +252,6 @@ int main(int argc, char *argv[])
 												modifier = argv[++i];
 												colonPos = modifier.find(":");
 
-//												cout << "-am, layer is:" << layerNo << " modifer is:" << modifier << "\n";
-
 												if (layerNo == 0)
 												{
 													key = modifier.substr(0, colonPos);
@@ -245,7 +273,8 @@ int main(int argc, char *argv[])
 													cout << "Invalid layer number:" << layerNo << "\n";
 
 
-												cout << "Done with -am\n";
+												if (!quiet)
+													cout << "Done with -am\n";
 
 											}
 											catch (format_Error & e)
@@ -262,10 +291,10 @@ int main(int argc, char *argv[])
 											else
 												try
 												{
-//													cout << argv[++i] << " " << argv[++i] << " not specifically decoded\n";
 													theNet->test(argv[++i], callback_TestComplete);
 
-													cout << "Done with -test\n";
+													if (!quiet)
+														cout << "Done with -test\n";
 
 												}
 												catch (format_Error & e)
@@ -275,10 +304,19 @@ int main(int argc, char *argv[])
 
 										}
 										else
-										{
-											unknownFlag = true;
-											cout << "Don't know that one:" << argvI << "\n";
-										}
+											if (argvI == "-q+")
+												quiet = true;
+											else
+												if (argvI == "-q-")
+												{
+													quiet = false;
+													cout << "Done with -q-\n";
+												}
+												else
+												{
+													unknownFlag = true;
+													cout << "Don't know that one:" << argvI << "\n";
+												}
 
 	}
 
@@ -289,10 +327,11 @@ int main(int argc, char *argv[])
 		cout << "(-r | -run) %file run from input set from inPath  and write each result vector to standard output\n";//and save the results in outPath\n";
 		cout << "-rand randomise the network\n";
 		cout << "-test %file run the input patter from training file %file and write the final difference vector to standard output\n";
-		cout << "-s %path save on %path (with no trailing //\n";
+		cout << "-s %path save on %path (with no trailing /)\n";
 		cout << "-c %i %h %o %n create a new randomised network with %i input nodes %h hidden nodes %o output nodes, called %n (with a learning rate of 0.1)\n";
-		cout << "-at % %h %o alter the topology to be %i input nodes %h hidden nodes %o output nodes\n";
+		cout << "-at %i %h %o alter the topology to be %i input nodes %h hidden nodes %o output nodes\n";
 		cout << "-am 1 (biasNode:true OR biasNode:false) add or remove an input bias node to layer one\n";
+		cout << "-q+ OR -q- Switch quiet mode on (-q+) or off (-q-) +q+ supresses the 'Done with...' after each command line arguement\n";
 	}
 	if (theNet != NULL)
 		delete theNet;

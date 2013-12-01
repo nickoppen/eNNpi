@@ -3,6 +3,22 @@
 
 #include "nnFile.hpp"
 
+/*
+ * The eNN file wrapper hierarchy:
+ *
+ *	NNFile
+ *		networkFile
+ *		dataFile
+ *			inputFile
+ *			trainingFile
+ *
+ * networkFile takes a text file formated by the neural net by the SaveTo or SaveOn functions,
+ * reads it in completely and then responds to the access calls to pass back each value. The
+ * default file extension for a network file is .enn
+ *
+ * You should not have to edit a .enn file directly yourself.
+ */
+
 class networkFile : public NNFile
 {
 		public:

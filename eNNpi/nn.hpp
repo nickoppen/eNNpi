@@ -11,12 +11,20 @@
 
 typedef void (*funcRunCallback)(const int, void *);
 typedef void (*funcTrainCallback)(void *);
-typedef void (*funcTestCallback)(vector<float>*, void *);
+typedef void (*funcTestCallback)(const int, vector<float>*, vector<float>*, vector<float>*, vector<float>*, void *);
 
 class nn
 {
 	public:
 						nn(int inputLayerWidth, int hiddenLayerWidth, int outputLayerWidth, float learningRateParam, string & newName)
+						/*
+						 * Create a new network with
+						 * inputLayerWidth input nodes,
+						 * hiddenLayerWidth hidden nodes,
+						 * outputLayerWidth output nodes and
+						 * learningRateParam as the learning rate with
+						 * newName as the network name
+						 */
                         {
                             network_description newNet;
 
@@ -36,6 +44,13 @@ class nn
                         }
 
                         nn(network_description newNet)
+                        /*
+                         * Create a new network using the data in the object newNet
+                         *
+                         * Use this call if you want to change default parameters that are not available in the
+                         * more primative nn(int, int, int, float, string&) constructor
+                         *
+                         */
                         {
                         	newNet.setMomentum((float)0.0);
 
@@ -45,11 +60,22 @@ class nn
                         };
 
                         nn(networkFile * newFile)
+                        /*
+                         * Reconstruct a network from a saved file with the wrapper newFile
+                         */
                         {
                         	setNetworkFile(newFile);
                         };
 
                         nn(const char * cstrFilename)
+                        /*
+                         * Reconstruct a network from a file named cstrFilename.
+                         *
+                         * If you have the filename as a C string use this call. Don't
+                         * bother creating a string object to call the nn(string*) constructor
+                         * since it will just strip the C string off and call this function
+                         *
+                         */
                         {
                         	ifstream * pFile;
                         	networkFile * nFile;
@@ -60,17 +86,31 @@ class nn
 								nFile = new networkFile(pFile);
 								nFile->readInFile();
 								setNetworkFile(nFile);
+								delete pFile;
+								delete nFile;
 							}
                             else
                             	throw format_Error(ENN_ERR_NON_FILE);
                         }
 
                         nn(string * strFilename)
+                        /*
+                         * Reconstruct a network from a file named strFilename
+                         *
+                         * Only use this call if you have the name in a string object already.
+                         *
+                         */
                         {
                         	nn(strFilename->c_str());
                         }
 
                         ~nn()
+                        /*
+                         * The network object destructor.
+                         *
+                         * ALWAYS make sure you call this function.
+                         *
+                         */
                         {
                         	delete errorVector;
                             delete theInputLayer;
@@ -80,12 +120,18 @@ class nn
 
 						
 	// operation
-            void		run(string * strFilename, funcRunCallback runComplete = NULL)
-                        {
-                            run (strFilename->c_str(), runComplete);
-                        }
-
 			void		run(const char * cstrFilename, funcRunCallback runComplete = NULL)
+			/*
+			 * Open the input file named by cstrFilename and run each input vector through the
+			 * network, calling the runComplete callback each time.
+			 *
+			 *	typedef void (*funcRunCallback)(const int index, void * thisNetwork);
+			 *	index is the index of the row that has just been run
+			 *	theNetwork is a void pointer to this object.
+			 *
+			 *	Call ((nn*)theNetwork)->runResult(vector<float>* existingVector) to retrieve the result
+			 *
+			 */
                         {
                             inputFile * inFile;
                             ifstream * pFile;
@@ -103,9 +149,38 @@ class nn
                             	throw format_Error(ENN_ERR_NON_FILE);
                         }
 
-			void		run(inputFile * inFile, funcRunCallback runComplete = NULL)		// call back because running is asychronous
+            void		run(string * strFilename, funcRunCallback runComplete = NULL)
+            /*
+             * Open the input file named by strFilename and run each input vector throught the
+			 * network, calling the runComplete callback each time.
+			 *
+			 *	typedef void (*funcRunCallback)(const int index, void * thisNetwork);
+			 *	index is the index of the row that has just been run
+			 *	theNetwork is a void pointer to this object.
+			 *
+			 *	Call ((nn*)theNetwork)->runResult(vector<float>* existingVector) to retrieve the result
+			 *
+			 *	Only use this call if you already have the file name as a string object. If you have a
+			 *	C string call run(const char * filename, runtimeCallback)
+			 *
+			 */
                         {
-                            // call run(vector) from inFile
+                            run (strFilename->c_str(), runComplete);
+                        }
+
+			void		run(inputFile * inFile, funcRunCallback runComplete = NULL)
+			/*
+			 * Run the contents of the data file wrapped by inFile calling the runComplete callback
+			 * for each line.
+			 *
+			 *	typedef void (*funcRunCallback)(const int index, void * thisNetwork);
+			 *	index is the index of the row that has just been run
+			 *	theNetwork is a void pointer to this object.
+			 *
+			 *	Call ((nn*)theNetwork)->runResult(vector<float>* existingVector) to retrieve the result
+			 *
+			 */
+                        {
                             unsigned int i;
 
                             for (i = 0; i < inFile->inputLines(); i++)
@@ -115,8 +190,19 @@ class nn
 
                         }
             void		run(vector<float> * inputVector, funcRunCallback runComplete = NULL, const int index = 0)
+            /*
+             * Pass inputVector to the input layer and trigger it to execute the network logic. Call the
+             * runComplete callback if it is not NULL.
+             *
+			 *	typedef void (*funcRunCallback)(const int index, void * thisNetwork);
+			 *	index is the index of the row that has just been run
+			 *	theNetwork is a void pointer to this object.
+			 *
+			 *	Call ((nn*)theNetwork)->runResult(vector<float>* existingVector) to retrieve the result
+			 *
+			 * Note: this version is not multi threaded so waitForActivation and blockTillValue do nothing
+             */
                         {
-//                            cout << "running:" << (*inputVector)[0] << "\n";
 
                             theOutputLayer->waitForActivation();									// set up the semaphores
                             theInputLayer->setInputVector(inputVector);								// set the input nodes with the input vector
@@ -127,27 +213,56 @@ class nn
                                 runComplete(index, (void*)this);
                         }
 
-            void		run(vector<float> * inputVector, vector<float> * outputVector)	/// synchronous call
+            void		run(vector<float> * inputVector, vector<float> * outputVector)
+            /*
+             * Run a single input vector and return the result. This call is designed to
+             * run synchronously.
+             */
                         {
                             run(inputVector);
                             // wait for the result
-                            outputVector = runResult();
+                            runResult(outputVector);
                         }
 
-            vector<float> * runResult()
+            vector<float> * runResult(vector<float> * outputVector)
+			/*
+			 * Set and return outputVector from the last run.
+			 *
+			 * Call this quickly - I'm not sure how long it will be before the result is written
+			 * over by the next output.
+			 *
+			 */
                         {
-                            vector<float> * outputVector;
-                            outputVector = new vector<float>(net.outputNodes());
                             theOutputLayer->returnOutputVector(outputVector);		// retrieve the result vector
                             return outputVector;
                         }
 
             void 		train(string * strFilename, funcTrainCallback trComplete = NULL)
+            /*
+             * Train the network using the training set in the file called strFilename. Call the trComplete callback once
+             * when training is complete.
+             *
+             * typedef void (*funcTrainCallback)(void * nnObj); passes an anomymous pointer to this object back via the callback
+             *
+             * call ((nn*)nnObj)->trainingError(vector<float>* existingVector); to retrieve the most recent training error vector
+             *
+             */
                         {
                             train(strFilename->c_str(), trComplete);
                         }
 
             void		train(const char * cstrFilename, funcTrainCallback trComplete = NULL)
+            /*
+             * Train the network using the training set in the file called cstrFilename. Call the trComplete callback once
+             * when training is complete.
+             *
+             * typedef void (*funcTrainCallback)(void * nnObj); passes an anomymous pointer to this object back via the callback
+             *
+             * call ((nn*)nnObj)->trainingError(vector<float>* existingVector); to retrieve the most recent training error vector
+             *
+             * If you already have the filename in a string object call train(string *...) otherwise call this function
+             *
+             */
                         {
                             ifstream * pFile;
                             trainingFile * trFile;
@@ -167,6 +282,15 @@ class nn
                         }
 
             void 		train(trainingFile * trFile, funcTrainCallback trComplete = NULL)
+            /*
+             * Train the network using the training set in the file wrapped by trFile. Call the trComplete callback once
+             * when training is complete.
+             *
+             * typedef void (*funcTrainCallback)(void * nnObj); passes an anomymous pointer to this object back via the callback
+             *
+             * call ((nn*)nnObj)->trainingError(vector<float>* existingVector); to retrieve the most recent training error vector
+             *
+             */
                         {
                             // call train with each vector
                             unsigned int i;
@@ -181,14 +305,20 @@ class nn
                         }
 
             void		train(vector<float> * inputVector, vector<float> * desiredVector, funcTrainCallback trComplete = NULL)
+            /*
+             * Train the network with the single pair, inputVector and desiredVector. Call the trComplete callback if it is not NULL
+             * when training is complete.
+             *
+             * typedef void (*funcTrainCallback)(void * nnObj); passes an anomymous pointer to this object back via the callback
+             *
+             * call ((nn*)nnObj)->trainingError(vector<float>* existingVector); to retrieve the most recent training error vector
+             *
+             */
                         {
-                            // train
                             try
                             {
                                 // run
                                 run(inputVector);
-
-//                                cout << "train: " << (*inputVector)[1] << "\n";
 
                                 theOutputLayer->setDesiredValues(desiredVector);
 
@@ -212,7 +342,12 @@ class nn
                         }
 
             status_t	trainingError(vector<float> * errorVector)
-            			// the errorVector must exist and be the right size
+            /*
+             * Return the most recent error vector generated by the most recent training set.
+             *
+             * Note: the errorVector must exist and be the right size
+             *
+             */
 						{
             				if (errorVector->size() != net.outputNodes())
             					return FAILURE;
@@ -221,13 +356,22 @@ class nn
 							return SUCCESS;
 						}
 
-        	// test
-            void		test(string * strTestFilename, funcTestCallback testComplete = NULL)
-						{
-							test(strTestFilename->c_str(), testComplete);
-						}
-
             void		test(const char * cstrTestFilename, funcTestCallback testComplete = NULL)
+            /*
+             * Run the data component of the training file called the contents of the C string cstrTestFilename and
+             * compare the output generated by the network to the desired output. Calculate the difference.
+             *
+             * The call back function funcTestCallback is called once for every line in the input file and has the following form:
+             *
+             * typedef void (*funcTestCallback)(const int index, vector<float>* inputVector, vector<float>* desiredOutput, vector<float>* outputVector, vector<float>* errorVector, void * thisObject);
+             * index: the row number in the file
+             * inputVector: a pointer to the test data vector
+             * desiredOutput: a pointer to the desired output vector
+             * outputVector: a pointer to the actual output from the net
+             * errorVector: a pointer to a vector containing the desired minus the actual output
+             * thisObject: an anonymous pointer to this object
+             *
+             */
 						{
 							ifstream * pFile;
 							trainingFile * tstFile;
@@ -245,34 +389,91 @@ class nn
 								throw format_Error(ENN_ERR_NON_FILE);
 						}
 
+            void		test(string * strTestFilename, funcTestCallback testComplete = NULL)
+            /*
+             * Run the data component of the training file called the contents of the string object strTestFilename and
+             * compare the output generated by the network to the desired output. Calculate the difference.
+             *
+             * The call back function funcTestCallback is called once for every line in the input file and has the following form:
+             *
+             * typedef void (*funcTestCallback)(const int index, vector<float>* inputVector, vector<float>* desiredOutput, vector<float>* outputVector, vector<float>* errorVector, void * thisObject);
+             * index: the row number in the file
+             * inputVector: a pointer to the test data vector
+             * desiredOutput: a pointer to the desired output vector
+             * outputVector: a pointer to the actual output from the net
+             * errorVector: a pointer to a vector containing the desired minus the actual output
+             * thisObject: an anonymous pointer to this object
+             *
+             * Note: if you have the filename already as a C string call the function test(const char *... ) rather than this function
+             *
+             */
+						{
+							test(strTestFilename->c_str(), testComplete);
+						}
+
             void		test(trainingFile * testFile, funcTestCallback testComplete = NULL)
+            /*
+             * Run the data component of the training file inside the wrapper testFile and
+             * compare the output generated by the network to the desired output. Calculate the difference.
+             *
+             * The call back function funcTestCallback is called once for every line in the input file and has the following form:
+             *
+             * typedef void (*funcTestCallback)(const int index, vector<float>* inputVector, vector<float>* desiredOutput, vector<float>* outputVector, vector<float>* errorVector, void * thisObject);
+             * index: the row number in the file
+             * inputVector: a pointer to the test data vector
+             * desiredOutput: a pointer to the desired output vector
+             * outputVector: a pointer to the actual output from the net
+             * errorVector: a pointer to a vector containing the desired minus the actual output
+             * thisObject: an anonymous pointer to this object
+             *
+             */
 						{
 							unsigned int i;
 
 							for (i=0; i < testFile->inputLines(); i++)
-								test(testFile->inputSet(i), testFile->outputSet(i), testComplete);
+								test(i, testFile->inputSet(i), testFile->outputSet(i), testComplete);
 
 						}
 
-            void		test(vector<float> * inputVector, vector<float> * desiredOutput, funcTestCallback testComplete = NULL)
+            void		test(const int index, vector<float> * inputVector, vector<float> * desiredOutput, funcTestCallback testComplete = NULL)
+            /*
+             * Test a single input vector and compare the result with the givine output vector. Then
+             * compare the output generated by the network to the desired output. Calculate the difference.
+             *
+             * The call back function funcTestCallback is called once and has the following form:
+             *
+             * typedef void (*funcTestCallback)(const int index, vector<float>* inputVector, vector<float>* desiredOutput, vector<float>* outputVector, vector<float>* errorVector, void * thisObject);
+             * index: the row number in the file
+             * inputVector: a pointer to the test data vector
+             * desiredOutput: a pointer to the desired output vector
+             * outputVector: a pointer to the actual output from the net
+             * errorVector: a pointer to a vector containing the desired minus the actual output
+             * thisObject: an anonymous pointer to this object
+             *
+             */
 						{
             				size_t i;
-							// run
+            				vector<float> outputVec(net.outputNodes());
+
+            				// run
 							run(inputVector);
 
 							// block til value
 
 							// compare
-							theOutputLayer->returnOutputVector(errorVector);
+							theOutputLayer->returnOutputVector(&outputVec);
 
 							for (i = 0; i != errorVector->size(); i++)
-								(*errorVector)[i] = (*errorVector)[i] - (*desiredOutput)[i];
+								(*errorVector)[i] = outputVec[i] - (*desiredOutput)[i];
 
 							if (testComplete != NULL)
-								testComplete(errorVector, (void*)this);
+								testComplete(index, inputVector, desiredOutput, &outputVec, errorVector, (void*)this);
 						}
 
             void		randomise()
+            /*
+             * Randomise the weights and biases in the network thereby restarting the training cycle from a different place.
+             */
 						{
 							random_device rd;
 							theHiddenLayer->randomise(rd);
@@ -283,27 +484,35 @@ class nn
 						}
 
 	// access
-			network_description * networkDescription() { return & net; }
-			unsigned int inputNodes() { return net.inputNodes(); }
-			unsigned int hiddenNodes() { return net.hiddenNodes(); }
-			unsigned int outputNodes() { return net.outputNodes(); }
+			network_description * networkDescription() { return & net; }	// return the current networ_descripton object
+			unsigned int inputNodes() { return net.inputNodes(); }			// return the current number of input nodes (including any input bias node)
+			unsigned int hiddenNodes() { return net.hiddenNodes(); }		// return the current number of hidden nodes
+			unsigned int outputNodes() { return net.outputNodes(); }		// return the current number of output nodes
 
 			status_t 	saveTo(string * strPath)
+			/*
+			 * Save the network to a file called <network Name>_<majorVersion>_<minorVersion>_<revision>.enn in the path supplied in string object strPath.
+			 *
+			 * Note: if you have the path name already as a C string call saveTo(const char *) rather than this function
+			 *
+			 */
 			{
 				return saveTo(strPath->c_str());
 			}
 
 			status_t	saveTo(const char * cstrPath)
+			/*
+			 * Save the network to a file called <network Name>_<majorVersion>_<minorVersion>_<revision>.enn in the path supplied in C string cstrPath
+			 */
 			{
 				fstream * pFile;
 				status_t rVal;
-				char cstrPathFile[] = "                                        ";	// dumb
-				char cstrFileName[] = "                                ";			// dumb
+				char cstrPathFile[255];	// dumb
+				char cstrFileName[25]; // dumb
 
 				if (checkExists(cstrPath, false))
 				{
 					sprintf(cstrPathFile, "%s//%s", cstrPath, defaultName(cstrFileName));
-//					cout << "saving to <" << cstrPathFile << "> " << majorVersion << " " << minorVersion << " " << revision << "\n";
 
 					pFile = new fstream();
 					pFile->open(cstrPathFile, ios::out);
@@ -318,6 +527,9 @@ class nn
 			}
 
 			status_t	saveTo(fstream * pFile)
+			/*
+			 * Save the network to the file stream pointed to by pFile. The name of the file will not be changed.
+			 */
 			{
 				string strContent;
 				status_t rVal;
@@ -327,8 +539,45 @@ class nn
 				return rVal;
 			}
 
+			// save to disk
+			status_t	saveOn(string * strOut)
+			/*
+			 *  save the net in the given existing string
+			 */
+			{
+				stringstream ss;
+
+				ss.precision(8);
+
+				ss << "version(1,0,0)\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
+
+				ss << "networkTopology(" << net.standardInputNodes() << "," <<  net.hiddenNodes() <<  "," <<  net.outputNodes() << ")\n";
+
+				ss << "learning(" << net.trainingLearningRate() << "," << net.trainingMomentum() << ")\n";
+
+				// call the detail storage process here
+				theInputLayer->storeOn(&ss);
+				theHiddenLayer->storeOn(&ss);
+				theOutputLayer->storeOn(&ss);
+
+				hasChanged = false;
+
+				(*strOut) = ss.str();
+
+				return SUCCESS;
+			}
+
 	// Modify
 			status_t	alter(int newIn, int newHidden, int newOut)
+			/*
+			 * Alter the topology of the network to be
+			 * newIn: the new number of input nodes
+			 * newHidden: the new number of hidden nodes
+			 * newOut: the new number of output nodes
+			 *
+			 * This will randomise the network and increment the major version resetting the minorVerions and revision
+			 *
+			 */
 			{
 				unsigned int layerNo = 0;
 
@@ -340,9 +589,9 @@ class nn
                 net.setOutputNodes(newOut);
                 net.setStandardInputNodes(newIn);
 
-                theInputLayer = new inputLayer(net, layerNo++);
-                theHiddenLayer = new hiddenLayer(net, layerNo++);
-                theOutputLayer = new outputLayer(net, layerNo++);
+                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
+                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
+                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
 
                 theInputLayer->connectNodes(theHiddenLayer->nodeList());
                 theHiddenLayer->connectNodes(theOutputLayer->nodeList());
@@ -350,10 +599,18 @@ class nn
                 randomise();
                 incrementMajorVersion();
 
+                hasChanged = true;
 				return SUCCESS;
 			}
 
 			status_t	alter(network_description * newTopo)
+			/*
+			 * Alter the topology of the network to be as described in the network_topology object newTopo. Use this call
+			 * if you want to alter multiple features at once.
+			 *
+			 * This will randomise the network and increment the major version resetting the minorVerions and revision
+			 *
+			 */
 			{
 
 				delete theInputLayer;
@@ -365,10 +622,18 @@ class nn
 				randomise();
                 incrementMajorVersion();
 
+                hasChanged = true;
+
                 return SUCCESS;
 			}
 
 			status_t	alter(unsigned int layer, layer_modifier mod, bool boolAdd = true)
+			/*
+			 * Alter a layer within the network. Currently you can only add or remove a bias node from layer zero (the input layer)
+			 *
+			 * This will randomise the network and increment the major version resetting the minorVerions and revision
+			 *
+			 */
 			{
 				network_description newNet;
 
@@ -385,43 +650,25 @@ class nn
                 randomise();
                 incrementMajorVersion();
 
+                hasChanged = true;
+
                 return SUCCESS;
 			}
 
-	// save to disk
-            status_t	saveOn(string * strOut)	// save the net in the given existing string
-            {
-            	stringstream ss;
-
-            	ss.precision(8);
-
-                ss << "version(1,0,0)\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
-
-                ss << "networkTopology(" << net.standardInputNodes() << "," <<  net.hiddenNodes() <<  "," <<  net.outputNodes() << ")\n";
-
-                ss << "learning(" << net.trainingLearningRate() << "," << net.trainingMomentum() << ")\n";
-
-                // call the detail storage process here
-                theInputLayer->storeOn(&ss);
-                theHiddenLayer->storeOn(&ss);
-                theOutputLayer->storeOn(&ss);
-
-                hasChanged = false;
-
-                (*strOut) = ss.str();
-
-                return SUCCESS;
-            }
-
             char *	defaultName(char * buffer)
-            // the calling function must make sure that there is enough room in the buffer
+            /*
+             * Return the default name for the network, which is: <network Name>_<majorVersion>_<minorVersion>_<revision>.enn
+             *
+             * Note: the calling function must make sure that there is enough room in the buffer
+             *
+             */
             {
             	sprintf(buffer, "%s_%d_%d_%d.enn", networkName.c_str(), majorVersion, minorVersion, revision);
 
             	return buffer;
             }
 
-			bool		needsSaving() { return hasChanged; }
+			bool		needsSaving() { return hasChanged; }	// Return true if the network has changed since it was last saved.
 
 
 
@@ -437,9 +684,9 @@ class nn
                 net = newNet;
                 networkName = net.networkName();
 
-                theInputLayer = new inputLayer(net, layerNo++);
-                theHiddenLayer = new hiddenLayer(net, layerNo++);
-                theOutputLayer = new outputLayer(net, layerNo++);
+                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
+                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
+                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
 
                 theInputLayer->connectNodes(theHiddenLayer->nodeList());
                 theHiddenLayer->connectNodes(theOutputLayer->nodeList());

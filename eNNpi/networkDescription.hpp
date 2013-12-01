@@ -1,6 +1,7 @@
 /*
  *
- * structures.h Any structures needed in multiple places
+ * networkDescription.hpp All the parameters of a network. One of these objects plus a networkFile object added
+ * together gives a network.
  *
  */
 
@@ -82,7 +83,6 @@ class network_description
 	float			momentum;
 
 	private:
-	int				bMessageDecodeErr;
 
 	unsigned int 	inputNodeCount;
 	unsigned int 	hiddenNodeCount;

@@ -10,10 +10,31 @@
 #include "twoDFloatArray.hpp"
 #include "errStruct.hpp"
 
+/*
+ * The eNN file wrapper hierarchy:
+ *
+ *	NNFile
+ *		networkFile
+ *		dataFile
+ *			inputFile
+ *			trainingFile
+ *
+ *	NNFile implements the primative functions used by all file types. NNFile and sub-classes do all the format checking and pass
+ *	clean data to the network.
+ *
+ *	Once you have created the object and set the file pointer, call readInFile() to load all the data from the file into memory.
+ *
+ *	If you are having trouble with your data files, compile your application with the _DEBUG_ compiler directive set and that will
+ *	pass every input line, raw text and the values read onto standard output.
+ *
+ *	See the file content definitions for more details on the various file types.
+ *
+ *	NOTE: no files contain spaces.
+ */
+
 
 class NNFile 
-// NNFile takes a text file formated by the neural net by the Save or SaveAs functions,
-// reads it in completely and then responds to the access calls to pass back each value
+
 {
 	public:
                                     NNFile()
@@ -170,7 +191,7 @@ class NNFile
 
 
 			network_description		net;
-            ifstream	*				pFile;		// temporary storage deleted by the doc
+            ifstream	*			pFile;		// temporary storage deleted by the doc
             string					errMessage;
 };
 

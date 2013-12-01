@@ -5,11 +5,28 @@
 
 
 /*
+ * The eNN file wrapper hierarchy:
+ *
  *	NNFile
  *		networkFile
  *		dataFile
  *			inputFile
  *			trainingFile
+ *
+ *	The inputFile contains just input data. These are the "production" files that contain the data that you
+ *	want to classify.
+ *
+ *	The trainingFile contains known, preclassified data sets and their desired output separated by a ;
+ *
+ *	See the file content descriptions for more information.
+ *
+ *	All data is stored as floats in the standard template class vector. These classes contain a vectors of vector<float>
+ *	buried in the class twoDFloatArray.
+ *
+ *	To access an input set call NNFile::inputFile::inputSet(unsigned int) or NNFile::trainingFile::inputSet(unsigned int) where the arguement is
+ *	the row that you want. Similarly call trainingFile::outputSet(unsigned int) to retrieve the output set.
+ *
+ *	The easiest way to use these classes is to pass your file reference to your newly created network and let it sort out the data.
  */
  
 class dataFile :  public NNFile
