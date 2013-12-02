@@ -1,1 +1,0 @@
-./eNNpi -n ../testData/xor/xor.enn -t ../testData/xor/xor01.tr -r ../testData/xor/xorData.dat -s ./save.enn
