@@ -1,0 +1,11 @@
+# the EXE shell variable chooses which executable to use
+# edit the path to reflect where the executable is on your system
+#
+# the release version
+EXE="/home/pi/git/piGit/eNNpi/Release"
+# OR
+# the debug version
+#EXE="/home/pi/git/piGit/eNNpi/Debug"
+# uncomment the version that you want and comment the version that you don't want
+
+$EXE/eNNpi -c 7 7 5 shuttle -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s . -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s .  -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s .  -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s .  -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s . -at 7 8 5 -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s .  -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s .  -rand -s . -t ./Set1.tr -s .  -t ./Set2.tr -s .  -t ./Set3.tr -s . -t ./Set4.tr -s . 
