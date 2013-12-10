@@ -7,7 +7,7 @@
 #include <random>
 #include "networkFile.hpp"
 #include "dataFile.hpp"
-#include "nnLayer.hpp"
+//#include "nnLayer.hpp"
 
 typedef void (*funcRunCallback)(const int, void *);
 typedef void (*funcTrainCallback)(void *);
@@ -113,9 +113,9 @@ class nn
                          */
                         {
                         	delete errorVector;
-                            delete theInputLayer;
-                            delete theHiddenLayer;
-                            delete theOutputLayer;
+//                            delete theInputLayer;
+//                            delete theHiddenLayer;
+//                            delete theOutputLayer;
                         }
 
 						
@@ -204,10 +204,10 @@ class nn
              */
                         {
 
-                            theOutputLayer->waitForActivation();									// set up the semaphores
-                            theInputLayer->setInputVector(inputVector);								// set the input nodes with the input vector
-                            theInputLayer->run();													// run the network
-                            theOutputLayer->blockTillValue();										// wait till all the semaphores are cleared
+//                            theOutputLayer->waitForActivation();									// set up the semaphores
+//                            theInputLayer->setInputVector(inputVector);								// set the input nodes with the input vector
+//                            theInputLayer->run();													// run the network
+//                            theOutputLayer->blockTillValue();										// wait till all the semaphores are cleared
 
                             if (runComplete != NULL)
                                 runComplete(index, (void*)this);
@@ -233,7 +233,7 @@ class nn
 			 *
 			 */
                         {
-                            theOutputLayer->returnOutputVector(outputVector);		// retrieve the result vector
+//                            theOutputLayer->returnOutputVector(outputVector);		// retrieve the result vector
                             return outputVector;
                         }
 
@@ -320,15 +320,15 @@ class nn
                                 // run
                                 run(inputVector);
 
-                                theOutputLayer->setDesiredValues(desiredVector);
+//                               theOutputLayer->setDesiredValues(desiredVector);
 
-                                theHiddenLayer->waitForTraining();
-                                theHiddenLayer->train();
-                                theHiddenLayer->blockTillTrained();
+//                               theHiddenLayer->waitForTraining();
+//                               theHiddenLayer->train();
+//                                theHiddenLayer->blockTillTrained();
 
-                                theInputLayer->waitForTraining();
-                                theInputLayer->train();
-                                theInputLayer->blockTillTrained();
+//                                theInputLayer->waitForTraining();
+//                                theInputLayer->train();
+//                                theInputLayer->blockTillTrained();
 
                                 if (trComplete != NULL)
                                     trComplete((void*)this);
@@ -461,7 +461,7 @@ class nn
 							// block til value
 
 							// compare
-							theOutputLayer->returnOutputVector(&outputVec);
+//							theOutputLayer->returnOutputVector(&outputVec);
 
 							for (i = 0; i != errorVector->size(); i++)
 								(*errorVector)[i] = outputVec[i] - (*desiredOutput)[i];
@@ -476,8 +476,8 @@ class nn
              */
 						{
 							random_device rd;
-							theHiddenLayer->randomise(rd);
-							theOutputLayer->randomise(rd);
+//							theHiddenLayer->randomise(rd);
+//							theOutputLayer->randomise(rd);
 
 							hasChanged = true;
 							incrementMinorVersion();
@@ -556,9 +556,9 @@ class nn
 				ss << "learning(" << net.trainingLearningRate() << "," << net.trainingMomentum() << ")\n";
 
 				// call the detail storage process here
-				theInputLayer->storeOn(&ss);
-				theHiddenLayer->storeOn(&ss);
-				theOutputLayer->storeOn(&ss);
+//				theInputLayer->storeOn(&ss);
+//				theHiddenLayer->storeOn(&ss);
+//				theOutputLayer->storeOn(&ss);
 
 				hasChanged = false;
 
@@ -581,20 +581,20 @@ class nn
 			{
 				unsigned int layerNo = 0;
 
-				delete theInputLayer;
-				delete theHiddenLayer;
-				delete theOutputLayer;
+//				delete theInputLayer;
+//				delete theHiddenLayer;
+//				delete theOutputLayer;
 
                 net.setHiddenNodes(newHidden);
                 net.setOutputNodes(newOut);
                 net.setStandardInputNodes(newIn);
 
-                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
-                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
-                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
+//                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
+//                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
+//                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
 
-                theInputLayer->connectNodes(theHiddenLayer->nodeList());
-                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
+//                theInputLayer->connectNodes(theHiddenLayer->nodeList());
+//                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
 
                 randomise();
                 incrementMajorVersion();
@@ -613,9 +613,9 @@ class nn
 			 */
 			{
 
-				delete theInputLayer;
-				delete theHiddenLayer;
-				delete theOutputLayer;
+//				delete theInputLayer;
+//				delete theHiddenLayer;
+//				delete theOutputLayer;
 
 				setup(*newTopo);
 
@@ -639,9 +639,9 @@ class nn
 
 				newNet = net;	// keep all the old values
 
-				delete theInputLayer;
-				delete theHiddenLayer;
-				delete theOutputLayer;
+//				delete theInputLayer;
+//				delete theHiddenLayer;
+//				delete theOutputLayer;
 
                 newNet.setInputLayerBiasNode(boolAdd);
 
@@ -684,12 +684,12 @@ class nn
                 net = newNet;
                 networkName = net.networkName();
 
-                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
-                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
-                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
+//                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
+//                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
+//                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
 
-                theInputLayer->connectNodes(theHiddenLayer->nodeList());
-                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
+//                theInputLayer->connectNodes(theHiddenLayer->nodeList());
+//                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
 
                 errorVector = new vector<float>(newNet.outputNodes());	// deleted in the destructor
 
@@ -702,10 +702,10 @@ class nn
 
                 setup(net);
 
-                theInputLayer->setLinkWeights(nFile->linkWeights(0));
-                theHiddenLayer->setLinkWeights(nFile->linkWeights(1));
-                theHiddenLayer->setNodeBiases(nFile->nodeBiases(1));
-                theOutputLayer->setNodeBiases(nFile->nodeBiases(2));
+//                theInputLayer->setLinkWeights(nFile->linkWeights(0));
+//                theHiddenLayer->setLinkWeights(nFile->linkWeights(1));
+//                theHiddenLayer->setNodeBiases(nFile->nodeBiases(1));
+//                theOutputLayer->setNodeBiases(nFile->nodeBiases(2));
 
 
                 majorVersion = nFile->majorVersion();
@@ -733,9 +733,9 @@ class nn
             }
 			
 	private:
-    inputLayer		*	theInputLayer;
-    hiddenLayer		*	theHiddenLayer;
-    outputLayer		*	theOutputLayer;
+//    inputLayer		*	theInputLayer;
+//    hiddenLayer		*	theHiddenLayer;
+//    outputLayer		*	theOutputLayer;
 
 	network_description	net;
 	
