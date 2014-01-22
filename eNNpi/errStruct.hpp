@@ -19,6 +19,9 @@ const char ENN_ERR_LINE_DECODE_FAILED[] = "Did not find expected line delimiter"
 const char ENN_ERR_UNK_MODIFIER[] = "Unknown Layer Modifier";
 const char ENN_ERR_BIAS_NODE_ON_INVALID_LAYER[] = "Bias node requested on an output only node";
 const char ENN_ERR_KEY_VALUE_FORMAT_ERROR[] = "Key:Value format error";
+const char ENN_ERR_NO_FILE_FOUND[] = "File does not exist";
+const char ENN_ERR_NONMATCHING_TOPOLOGY[] = "Data or training file topology does not match netowrk";
+const char ENN_ERR_UNSUPPORTED_ENN_FILE_FORMAT[] = "The version of the enn file is not supported";
 
 struct format_Error
 {

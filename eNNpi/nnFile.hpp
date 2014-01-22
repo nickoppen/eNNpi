@@ -5,10 +5,11 @@
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
-#include "networkDescription.hpp"
 #include <vector>
 #include "twoDFloatArray.hpp"
 #include "errStruct.hpp"
+
+enum nnFileContents {DATA, NETWORK, TRAIN_TEST};
 
 /*
  * The eNN file wrapper hierarchy:
@@ -49,9 +50,20 @@ class NNFile
                                         errMessage = "";
                                     }
 
+                                    NNFile(const char * cstrFileName)
+                                    {
+                                    	setTo(cstrFileName);
+                                    }
+
+                                    NNFile(string * strFileName)
+                                    {
+                                    	setTo(strFileName->c_str());
+                                    }
+
                                     virtual ~NNFile()
                                     {
-                                        // the file is closed and deleted by the calling application
+                                        pFile->close();
+                                        delete pFile;
                                     }
 		
             status_t				setTo(ifstream * theFile)
@@ -60,14 +72,34 @@ class NNFile
                                         return SUCCESS;
                                     }
 
-            status_t				readInFile()
+            status_t				setTo(const char * cstrFileName)
+									{
+										if (checkExists(cstrFileName))
+											pFile = new ifstream(cstrFileName);
+										else
+											throw format_Error(ENN_ERR_NO_FILE_FOUND);
+										return SUCCESS;
+									}
+
+            status_t				readInFile(void * net)
                                     {
 //                                        if (pFile->gcount())		// make sure that the file has something in it
+            								theNetwork = net;
                                             return readInLines();
 //                                        else
 //                                            throw format_Error(ENN_ERR_NON_FILE);
                                     }
-		
+
+            status_t				readInFile(void * net, bool isTrainingFile)
+									{
+            							// check for file content as above
+            							theNetwork = net;
+            							return readInLines(isTrainingFile);
+
+									}
+
+            virtual nnFileContents	fileType() = 0;
+
 
 	protected:				
             status_t				readInLines()
@@ -93,6 +125,8 @@ class NNFile
                                         }
                                         return decodeResult;
                                     }
+
+    virtual status_t				readInLines(bool isTrainingFile) = 0;
 
     virtual	status_t				decodeLine(string * strLines) = 0;
 		
@@ -174,25 +208,42 @@ class NNFile
 
 									}
 
-            status_t				decodeNetworkTopology(string * fragment)
+            status_t				decodeNetworkTopology(string * fragment, const int maxLayers, vector<unsigned int> * layerWidths)
                                     {
             							std::string::size_type	startPos = 1;
 
-                                        net.setStandardInputNodes(nextUIValue(fragment, startPos));
-                                        net.setHiddenNodes(nextUIValue(fragment, startPos));
-                                        net.setOutputNodes(nextUIValue(fragment, startPos, ')'));
+//                                        net.setStandardInputNodes(nextUIValue(fragment, startPos));
+//                                        net.setHiddenNodes(nextUIValue(fragment, startPos));
+//                                        net.setOutputNodes(nextUIValue(fragment, startPos, ')'));
+            							(*layerWidths)[0] = nextUIValue(fragment, startPos);
+            							(*layerWidths)[1] = nextUIValue(fragment, startPos);
+            							(*layerWidths)[2] = nextUIValue(fragment, startPos, ')');
 #ifdef _DEBUG_
-                                      	cout << "Network Topo - InputNodes: " << net.inputNodes() << " HiddenNodes: " << net.hiddenNodes() << " OutputNodes: " << net.outputNodes() << "\n";
+                                      	cout << "Network Topo - InputNodes: " << (*layerWidths)[0] << " HiddenNodes: " << (*layerWidths)[1] << " OutputNodes: " << (*layerWidths)[2] << "\n";
 #endif
 
                                         return SUCCESS;
                                     }
 
+	private:
+            bool checkExists(const char * fileName, bool boolShouldBeFile = true)
+            {
+            	struct stat fileAtt;
 
+            	if (stat(fileName, &fileAtt) != 0)
+            		return false;
+            	else
+            		if (boolShouldBeFile)
+            			return S_ISREG(fileAtt.st_mode);
+            		else
+            			return S_ISDIR(fileAtt.st_mode);
 
-			network_description		net;
+            }
+
+	protected:
             ifstream	*			pFile;		// temporary storage deleted by the doc
             string					errMessage;
+            void		*			theNetwork;
 };
 
 #endif

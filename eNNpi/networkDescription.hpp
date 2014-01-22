@@ -14,7 +14,29 @@
 const int maxNodes = 64;
 const int maxLayers = 2;	// input layer is layer 0
 
-enum layer_modifier { BIAS_NODE };
+enum layer_modifier { BIAS_NODE, TRANSITION_SIGMOID, TRANSITION_LINEAR, TRANSITION_BINARY };
+enum node_modifier { INPUT_BINARY, INPUT_UNIFORM, INPUT_CONTRADICTORY };
+
+struct nodeData
+{
+  public:
+	node_modifier inputType;
+	float p;
+	bool pIsOneHalf;
+};
+
+struct layerData
+{
+  public:
+	unsigned int nodeCount;
+	twoDFloatArray * weights;
+	vector<float> * biases;
+	bool hasBiasNode;
+	layer_modifier transition;
+	vector<float> * nodeValues;
+	vector<nodeData> * nodeInfo;
+};
+
 
 class network_description
 {
@@ -84,12 +106,13 @@ class network_description
 
 	private:
 
-	unsigned int 	inputNodeCount;
-	unsigned int 	hiddenNodeCount;
-	unsigned int 	outputNodeCount;
-	bool			inputLayerBiasNode;
-	float			learningRate;
-	std::string		name;
+	unsigned int 		inputNodeCount;
+	unsigned int 		hiddenNodeCount;
+	unsigned int 		outputNodeCount;
+	vector<layerData>*	layers;
+	bool				inputLayerBiasNode;
+	float				learningRate;
+	std::string			name;
 
 };
 

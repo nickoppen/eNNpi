@@ -2,7 +2,7 @@
 #define _datafile_h
 
 #include "nnFile.hpp"
-
+#include "nn.hpp"
 
 /*
  * The eNN file wrapper hierarchy:
@@ -28,270 +28,326 @@
  *
  *	The easiest way to use these classes is to pass your file reference to your newly created network and let it sort out the data.
  */
- 
-class dataFile :  public NNFile
+
+class dataFile: public NNFile
 {
-	public:
-                    dataFile() : NNFile()
-                    {
-                        lineCount = 0;
-                        inputArray = NULL;
-                    }
+public:
+	dataFile() :
+			NNFile()
+	{
+		lineCount = 0;
+//                        inputArray = NULL;
+	}
 
-                    dataFile(ifstream * theFile) : NNFile(theFile)
-                    {
-                        lineCount = 0;
-                        inputArray = NULL;
-                    }
+	dataFile(ifstream * theFile) :
+			NNFile(theFile)
+	{
+		lineCount = 0;
+//                        inputArray = NULL;
+	}
 
-                    virtual ~dataFile() //: ~NNFile()
-                    {
-                        if (inputArray != NULL)
-                            delete inputArray;
-                    }
+	dataFile(const char * cstrFileName) :
+			NNFile(cstrFileName)
+	{
+		lineCount = 0;
+	}
 
-	
-	public:		// access
-                    unsigned int			inputLines()	// return how many lines have been read in
-                                            {	// return how many lines have been read in
-                                                unsigned int fileLen;
-                                                unsigned int inputVecWidth;
+	dataFile(string * strFileName) :
+			NNFile(strFileName)
+	{
+		lineCount = 0;
+	}
 
-                                                if (inputArray->dimensions(fileLen, inputVecWidth))
-                                                    return fileLen;
-                                                else
-                                                    return 0;
+	virtual ~dataFile() //: ~NNFile()
+	{
+	}
 
-                                            }
+public:
+	// access
+	unsigned int inputLines() // return how many lines have been read in
+	{ // return how many lines have been read in
+		return lineCount;
 
-                    vector<float> *			inputSet(unsigned int row)
-                                            {
-                                                return inputArray->values(row);
-                                            }
+	}
 
-					network_description *	networkDescription() { return &net; }
 
-	private:
-    virtual			status_t				decodeLine(string * strLine) = 0;
+	virtual nnFileContents fileType() = 0;
 
-	protected:
-					unsigned int			lineCount;
-					twoDFloatArray	*		inputArray;
-	
+private:
+	virtual status_t decodeLine(string * strLine) = 0;
+
+protected:
+	virtual status_t readInLines(bool isTrainingFile) = 0;
+
+	unsigned int lineCount;
+
 };
 
-class inputFile : public dataFile
+class inputFile: public dataFile
 {
-	public:
-                    inputFile() : dataFile() { }
-                    inputFile(ifstream * theFile) : dataFile(theFile) { }
-                    virtual ~inputFile() // : ~dataFile()
-                    { }
-	
-	private:
-    status_t		decodeLine(string * strLine)
-                    {
-    					std::string::size_type			bracketPos;
-                        string							verb = "";
-                        string							arguements = "";
+public:
+	inputFile() :
+			dataFile()
+	{
+	}
+	inputFile(ifstream * theFile) :
+			dataFile(theFile)
+	{
+	}
+	inputFile(const char * cstrFileName) :
+			dataFile(cstrFileName)
+	{
+	}
+	inputFile(string * strFileName) :
+			dataFile(strFileName)
+	{
+	}
 
-                        bracketPos = strLine->find('(', 0);
-                        if (bracketPos == std::string::npos)
-                            throw format_Error(ENN_ERR_NON_FILE);
+	virtual ~inputFile() // : ~dataFile()
+	{
+	}
 
-                        if (verbArguement(strLine, verb, arguements))
-                        {
-                            if (verb ==  "inputVector")
-                            {
-                                if (lineCount++ == 0)
-                                    inputArray = new twoDFloatArray(net.standardInputNodes());
-                                else
-                                    inputArray->addRow();
+	virtual nnFileContents fileType()
+	{
+		return DATA;
+	}
+
+protected:
+	status_t readInLines(bool shouldNotGetHere)
+	{
+		return FAILURE;
+	}
+
+private:
+	status_t decodeLine(string * strLine)
+	{
+		std::string::size_type bracketPos;
+		string verb = "";
+		string arguements = "";
+		status_t decodeResult;
+
+		bracketPos = strLine->find('(', 0);
+		if (bracketPos == std::string::npos)
+			throw format_Error(ENN_ERR_NON_FILE);
+
+		if (verbArguement(strLine, verb, arguements))
+		{
+			if (verb == "inputVector")
+			{
 #ifdef _DEBUG_
-                                        	cout << "Decoding Input Vector\n";
+				cout << "Decoding Input Vector\n";
 #endif
 
-
-                                return decodeInputVector(&arguements, inputArray->values(lineCount - 1));
-                            }
-                            if (verb ==  "networkTopology")
-                            {
+				return decodeInputVector(&arguements);
+			}
+			if (verb == "networkTopology")
+			{
 #ifdef _DEBUG_
-                                        	cout << "Decode Topology\n";
+				cout << "Decode Topology\n";
 #endif
 
-                                return decodeNetworkTopology(&arguements);
-                            }
+				vector<unsigned int> layerWidths(maxLayers);
+				decodeResult = decodeNetworkTopology(&arguements, maxLayers, &layerWidths);
+				if (layerWidths[0] != ((nn*) theNetwork)->layerZeroWidth())
+					throw format_Error(ENN_ERR_NONMATCHING_TOPOLOGY);
+
+				return decodeResult;
+			}
+
 //                            errMessage.Format("%s: %s", ENN_ERR_UNK_KEY_WORD, verb.GetBuffer());
-                            errMessage = ENN_ERR_UNK_KEY_WORD;
-                            errMessage += ": ";
-                            errMessage += verb;
-                            throw format_Error(errMessage.c_str());
-                        }
-                        else
-                            throw format_Error(ENN_ERR_NON_FILE);
+			errMessage = ENN_ERR_UNK_KEY_WORD;
+			errMessage += ": ";
+			errMessage += verb;
+			throw format_Error(errMessage.c_str());
+		}
+		else
+			throw format_Error(ENN_ERR_NON_FILE);
 
-                        return FAILURE; // will not happen
-                    }
+		return FAILURE; // will not happen
+	}
 
-    status_t		decodeInputVector(string * fragment, vector<float> * lineVector)
-                    {
-                        float		 inputValue;
-                        unsigned int node;
-                        std::string::size_type		 startPos;
+	status_t decodeInputVector(string * fragment)
+	{
+		float inputValue;
+		unsigned int node;
+		std::string::size_type startPos;
+		unsigned int inputNodeCount;
+		vector<float> lineVector(
+				inputNodeCount = ((nn*) theNetwork)->layerZeroWidth());
 
-                        startPos = 1;
+		startPos = 1;
 
 #ifdef _DEBUG_
-                                        	cout << "Input Values,";
+		cout << "Input Values,";
 #endif
 
-                        for (node = 0; node < (net.standardInputNodes() - 1); node++)	//>
-                        {
-                            inputValue = nextFValue(fragment, startPos);
-                            lineVector->operator[](node) = inputValue;
+		for (node = 0; node < (inputNodeCount - 1); node++) //>
+		{
+			inputValue = nextFValue(fragment, startPos);
+			lineVector[node] = inputValue;
 #ifdef _DEBUG_
-                                        	cout << " Node " << node << ": " << inputValue;
+			cout << " Node " << node << ": " << inputValue;
 #endif
-                        }
-                        inputValue = nextFValue(fragment, startPos, ')');
+		}
+		inputValue = nextFValue(fragment, startPos, ')');
 #ifdef _DEBUG_
-                                        	cout << " Node " << node << ": " << inputValue << "\n";
+		cout << " Node " << node << ": " << inputValue << "\n";
 #endif
-                        lineVector->operator[](node) = inputValue;
+		lineVector[node] = inputValue;
 
-                        return SUCCESS;
-                    }
+		((nn*) theNetwork)->run(&lineVector, NULL, lineCount); // run immediately
 
+		return SUCCESS;
+	}
 
 };
 
-class trainingFile : public dataFile
+class trainingFile: public dataFile
 {
-	public:
-                    trainingFile() : dataFile()
-                    {
-                        outputArray = NULL;
-                    }
+public:
+	trainingFile() :
+			dataFile()
+	{
+	}
 
-                    trainingFile(ifstream * theFile) : dataFile(theFile)
-                    {
-                        outputArray = NULL;
-                    }
+	trainingFile(ifstream * theFile) :
+			dataFile(theFile)
+	{
+	}
 
-                    virtual ~trainingFile() //: ~dataFile()
-                    {
-                        if (outputArray != NULL)
-                            delete outputArray;
-                    }
+	trainingFile(const char * cstrFileName) :
+			dataFile(cstrFileName)
+	{
+
+	}
+
+	trainingFile(string * strFileName) :
+			dataFile(strFileName)
+	{
+
+	}
+
+	virtual ~trainingFile() //: ~dataFile()
+	{
+	}
 
 
-                    vector<float> * outputSet(unsigned int row)
-                    {
-                        return outputArray->values(row);
-                    }
+	virtual nnFileContents fileType()
+	{
+		return TRAIN_TEST;
+	}
+protected:
+	status_t readInLines(bool isTrainingFile)
+	{
+		inputToTrain = isTrainingFile;
+		return NNFile::readInLines();
+	}
 
-                    vector<float> * outputVector(unsigned int row)
-					{
-						return outputArray->values(row);
-					}
+private:
+	status_t decodeLine(string * strLine)
+	{
+		std::string::size_type bracketPos;
+		string verb = "";
+		string arguements = "";
+		status_t decodeResult;
 
+		bracketPos = strLine->find('(', 0);
+		if (bracketPos == std::string::npos)
+			throw format_Error(ENN_ERR_NON_FILE);
 
-	private:
-    status_t		decodeLine(string * strLine)
-                    {
-                        std::string::size_type				bracketPos;
-                        string								verb = "";
-                        string								arguements = "";
-
-                        bracketPos = strLine->find('(', 0);
-                        if (bracketPos == std::string::npos) throw format_Error(ENN_ERR_NON_FILE);
-
-                        if (verbArguement(strLine, verb, arguements))
-                        {
-                            if (verb ==  "networkTopology")
-                            {
+		if (verbArguement(strLine, verb, arguements))
+		{
+			if (verb == "networkTopology")
+			{
 #ifdef _DEBUG_
-                                        	cout << "Decode Topology\n";
+				cout << "Decode Topology\n";
 #endif
-                                return decodeNetworkTopology(&arguements);
-                            }
-                            if (verb ==  "inputOutputVector")
-                            {
-                                if (lineCount++ == 0)
-                                {
+				vector<unsigned int> layerWidths(maxLayers);
+				decodeResult = decodeNetworkTopology(&arguements, maxLayers, &layerWidths);
+				if ((layerWidths[0] == ((nn*) theNetwork)->layerZeroWidth())
+						&& (layerWidths[3] == ((nn*) theNetwork)->layerNWidth()))
+					return decodeResult;
+				else
+					throw format_Error(ENN_ERR_NONMATCHING_TOPOLOGY);
+
+				return decodeResult;
+			}
+			if (verb == "inputOutputVector")
+			{
 #ifdef _DEBUG_
-                                        	cout << "Decode Input/Output Vector\n";
+				cout << "Decode Input/Output Vector\n";
 #endif
-                                    inputArray = new twoDFloatArray(net.standardInputNodes());
-                                    outputArray = new twoDFloatArray(net.outputNodes());
-                                }
-                                else
-                                {
-                                    inputArray->addRow();
-                                    outputArray->addRow();
-                                }
 
-                                return decodeTrainingVector(&arguements, inputArray->values(lineCount -1), outputArray->values(lineCount - 1));
-                            }
-                            errMessage = ENN_ERR_UNK_KEY_WORD;
-                            errMessage += ": ";
-                            errMessage += verb;
-                            throw format_Error(errMessage.c_str());
+				return decodeTrainingVector(&arguements);
+			}
+			errMessage = ENN_ERR_UNK_KEY_WORD;
+			errMessage += ": ";
+			errMessage += verb;
+			throw format_Error(errMessage.c_str());
 
-                        }
-                        else
-                            throw format_Error(ENN_ERR_NON_FILE);
+		}
+		else
+			throw format_Error(ENN_ERR_NON_FILE);
 
-                        return FAILURE; // will not happen
-                    }
+		return FAILURE; // will not happen
+	}
 
-    status_t		decodeTrainingVector(string * fragment, vector<float> * inVector, vector<float> * outVector)
-                    {
-                        float		 readValue;
-                        unsigned int node;
-                        std::string::size_type		 startPos;
+	status_t decodeTrainingVector(string * fragment)
+	{
+		float readValue;
+		unsigned int node;
+		std::string::size_type startPos;
 
-                        startPos = 1;
+		unsigned int inWidth = ((nn*) theNetwork)->layerZeroWidth();
+		unsigned int outWidth = ((nn*) theNetwork)->layerNWidth();
+		vector<float> inVector(inWidth);
+		vector<float> outVector(outWidth);
 
-#ifdef _DEBUG_
-                                    	cout << "Input Vector,";
-#endif
-                        for (node = 0; node < (net.standardInputNodes() - 1); node++)	//>
-                        {
-                            readValue = nextFValue(fragment, startPos);
-                            inVector->operator[](node) = readValue;
-#ifdef _DEBUG_
-                                      	cout << " Node: " << node << ": " << readValue;
-#endif
-                        }
-                        readValue = nextFValue(fragment, startPos, ';');
-#ifdef _DEBUG_
-                                      	cout << " Node: " << node << ": " << readValue << "\n";
-#endif
-                        inVector->operator[](node) = readValue;
+		startPos = 1;
 
 #ifdef _DEBUG_
-                                      	cout << "Output Vector,";
+		cout << "Input Vector,";
 #endif
-                        for (node = 0; node < (net.outputNodes() - 1); node++)		//>
-                        {
-                            readValue = nextFValue(fragment, startPos);
-                            outVector->operator[](node) = readValue;
+		for (node = 0; node < (inWidth - 1); node++) //>
+		{
+			readValue = nextFValue(fragment, startPos);
+			inVector[node] = readValue;
 #ifdef _DEBUG_
-                                      	cout << " Node: " << node << ": " << readValue;
+			cout << " Node: " << node << ": " << readValue;
 #endif
-                        }
-                        readValue = nextFValue(fragment, startPos, ')');
+		}
+		readValue = nextFValue(fragment, startPos, ';');
 #ifdef _DEBUG_
-                                      	cout << " Node: " << node << ": " << readValue << "\n";
+		cout << " Node: " << node << ": " << readValue << "\n";
 #endif
-                        outVector->operator[](node) = readValue;
+		inVector[node] = readValue;
 
-                        return SUCCESS;
-                    }
-	
-	twoDFloatArray * outputArray;
+#ifdef _DEBUG_
+		cout << "Output Vector,";
+#endif
+		for (node = 0; node < (outWidth - 1); node++) //>
+		{
+			readValue = nextFValue(fragment, startPos);
+			outVector[node] = readValue;
+#ifdef _DEBUG_
+			cout << " Node: " << node << ": " << readValue;
+#endif
+		}
+		readValue = nextFValue(fragment, startPos, ')');
+#ifdef _DEBUG_
+		cout << " Node: " << node << ": " << readValue << "\n";
+#endif
+		outVector[node] = readValue;
+
+		if (inputToTrain)
+			((nn*) theNetwork)->train(&inVector, &outVector);
+		else
+			((nn*)theNetwork)->test(lineCount, &inVector, &outVector);
+
+		return SUCCESS;
+	}
+
+	bool inputToTrain;
 };
 
 #endif

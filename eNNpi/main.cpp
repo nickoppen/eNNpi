@@ -1,12 +1,14 @@
 
 #include "nn.hpp"
+#include "networkFile.hpp"
+#include "dataFile.hpp"
 
 void callback_RunComplete(const int index, void * caller)
 {
 	vector<float> * resVec;	// created by the net
 	unsigned int i;
 
-	resVec = new vector<float>(((nn*)caller)->outputNodes());
+	resVec = new vector<float>(((nn*)caller)->layerNWidth());
 	resVec = ((nn*)caller)->runResult(resVec);
 	cout << "Index: " << index << " results -";
 	for(i = 0; i< resVec->size(); i++)
@@ -20,7 +22,7 @@ void callback_TrainingComplete(void * caller)
 	vector<float> * errVec;	// created by the net
 	unsigned int i;
 
-	errVec = new vector<float>(((nn*)caller)->outputNodes());
+	errVec = new vector<float>(((nn*)caller)->layerNWidth());
 
 	if ( ((nn*)caller)->trainingError(errVec) == SUCCESS)
 	{
@@ -94,7 +96,8 @@ int main(int argc, char *argv[])
 
 				try
 				{
-					theNet = new nn(argv[++i]);
+					networkFile netFile(argv[++i]);
+					theNet = new nn(&netFile);
 
 					if (!quiet)
 						cout << "Done with -n\n";
@@ -114,7 +117,8 @@ int main(int argc, char *argv[])
 				else
 					try
 					{
-						theNet->train(argv[++i], &callback_TrainingComplete);
+						trainingFile trFile(argv[++i]);
+						theNet->train(&trFile, &callback_TrainingComplete);
 
 						if (!quiet)
 							cout << "Done with -t\n";
@@ -134,7 +138,8 @@ int main(int argc, char *argv[])
 					else
 						try
 						{
-							theNet->run(argv[++i], &callback_RunComplete);
+							inputFile dataFile(argv[++i]);
+							theNet->run(&dataFile, &callback_RunComplete);
 
 							if (!quiet)
 								cout << "Done with -r or -run\n";
@@ -291,7 +296,8 @@ int main(int argc, char *argv[])
 											else
 												try
 												{
-													theNet->test(argv[++i], callback_TestComplete);
+													trainingFile testFile(argv[++i]);
+													theNet->test(&testFile, callback_TestComplete);
 
 													if (!quiet)
 														cout << "Done with -test\n";

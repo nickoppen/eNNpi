@@ -2,6 +2,7 @@
 #define _networkfile_h
 
 #include "nnFile.hpp"
+#include "nn.hpp"
 
 /*
  * The eNN file wrapper hierarchy:
@@ -24,48 +25,64 @@ class networkFile : public NNFile
 		public:
                         networkFile(ifstream * theFile) : NNFile(theFile)
                         {
-                            hiddenBiases = NULL;
-                            outputBiases = NULL;
-                            hasInputBiasNode = false;
+//                            hiddenBiases = NULL;
+//                            outputBiases = NULL;
+//                            hasInputBiasNode = false;
                         }
 
                         networkFile() : NNFile()
                         {
-                            hiddenBiases = NULL;
-                            outputBiases = NULL;
-                            hasInputBiasNode = false;
+//                            hiddenBiases = NULL;
+//                            outputBiases = NULL;
+//                            hasInputBiasNode = false;
                         }
+
+                        networkFile(const char * cstrFileName) :NNFile(cstrFileName)
+                        {
+
+                        }
+
+                        networkFile(string * strFileName) :NNFile(strFileName)
+                        {
+
+                        }
+
 
                         virtual ~networkFile() //: ~NNFile()
                         {
-                            if (hiddenBiases != NULL)
-                                delete hiddenBiases;
-                            if (outputBiases != NULL)
-                                delete outputBiases;
+//                            if (hiddenBiases != NULL)
+//                                delete hiddenBiases;
+//                            if (outputBiases != NULL)
+//                                delete outputBiases;
                         }
 
         void			setTo(ifstream * theFile)
                         {
-                            if (hiddenBiases != NULL)
-                                delete hiddenBiases;
-                            if (outputBiases != NULL)
-                                delete outputBiases;
+//                            if (hiddenBiases != NULL)
+//                                delete hiddenBiases;
+//                            if (outputBiases != NULL)
+//                                delete outputBiases;
                             NNFile::setTo(theFile);
                         }
 
+ virtual nnFileContents	fileType()
+						{
+							return NETWORK;
+						}
+
 
 	// access
-		float			linkValue(unsigned int layer, unsigned int node, unsigned int link);
+/*		float			linkValue(unsigned int layer, unsigned int node, unsigned int link);
 		float			biasValue(unsigned int layer, unsigned int node);
 
 		unsigned int	majorVersion() { return major; }	// major reconstruction of the network (will differ from other major versions by having different inputs etc.
 		unsigned int	minorVersion() { return minor; }	// minor versions have different starting point for training
 		unsigned int	revision() { return revis; }		// revisions have different amounts of training
 
-        void			networkDescription(network_description * netDes)	// structure passed in by the caller
-                        {
-                            (*netDes) = net;
-}
+//        void			networkDescription(network_description * netDes)	// structure passed in by the caller
+//                        {
+//                            (*netDes) = net;
+//}
 
         void			networkName(string * netName)
                         {
@@ -107,7 +124,7 @@ class networkFile : public NNFile
                                     throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
                             }
                         }
-
+*/
 	private:
         status_t		decodeLine(string * strLine)
                         {
@@ -205,20 +222,8 @@ class networkFile : public NNFile
 #ifdef _DEBUG_
                                         	cout << "Link: layer-" << layer << " innode-" << node << " outnode-" << link << " weight: " << linkWeight << "\n";
 #endif
-                            switch (layer)
-                            {
-                                case 0:
-                                    inputLinkWghts.set(node, link, linkWeight);
-                                    break;
-                                case 1:
-                                    hiddenLinkWghts.set(node, link, linkWeight);
-                                    break;
-                                case 2:
-                                    throw format_Error(ENN_ERR_LINK_ON_OUTPUT);
-                                    break;	// weights are "owned" by the inNode
-                                default:
-                                    throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
-                            }
+                              ((nn*)theNetwork)->setLinkWeight(layer, node, link, linkWeight);
+
                             return SUCCESS;
                         }
 
@@ -238,20 +243,8 @@ class networkFile : public NNFile
 #ifdef _DEBUG_
                                         	cout << "Node: layer-" << layer << " node-" << node << " bias-" << nodeBias << "\n";
 #endif
-                            switch (layer)
-                            {
-                                case 0:
-                                    throw format_Error(ENN_ERR_INPUT_NODE_BIAS_REQUESTED);
-                                    break;	// actually an error, input nodes have no bias
-                                case 1:
-                                    hiddenBiases->operator[](node) = nodeBias;
-                                    break;
-                                case 2:
-                                    outputBiases->operator[](node) = nodeBias;
-                                    break;
-                                default:
-                                    throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
-                            }
+
+                              ((nn*)theNetwork)->setNodeBias(layer, node, nodeBias);
 
                             return SUCCESS;
                         }
@@ -260,16 +253,23 @@ class networkFile : public NNFile
                         {
 							std::string::size_type		startPos;
 							std::string::size_type		commaPos;
+							std::string					name;
+
+							unsigned int major;
+							unsigned int minor;
+							unsigned int revis;
 
                             // name
                             startPos = 1;	// start at 1 to skip the opening bracket
                             commaPos = strBracket->find(',', startPos);	// find the first comma
                             name = strBracket->substr(1, commaPos - 1);
                             startPos = ++commaPos;
+                            ((nn*)theNetwork)->setName(&name);
 
                             major = nextUIValue(strBracket, startPos);
                             minor = nextUIValue(strBracket, startPos);
                             revis = nextUIValue(strBracket, startPos, ')');
+                            ((nn*)theNetwork)->setVersion(major, minor, revis);
 
 #ifdef _DEBUG_
                                         	cout << "Name: " << name << " major-" << major << " minor-" << minor << " revision" << revis << "\n";
@@ -280,20 +280,23 @@ class networkFile : public NNFile
 
         status_t		decodeNetworkTopology(string * strBracket)
                         {
+        					vector<unsigned int> layerWidths(maxLayers);
 
-                            status_t returnVal = NNFile::decodeNetworkTopology(strBracket);
-
-                            hiddenBiases = new vector<float>(net.hiddenNodes());
-                            outputBiases = new vector<float>(net.outputNodes());
-                            inputLinkWghts.dimension(net.inputNodes(), net.hiddenNodes());
-                            hiddenLinkWghts.dimension(net.hiddenNodes(), net.outputNodes());
+                            status_t returnVal = NNFile::decodeNetworkTopology(strBracket, maxLayers, &layerWidths);
+                            ((nn*) theNetwork)->setNetworkTopology(&layerWidths);
 
                             return returnVal;
                         }
 
         status_t		decodeVersion(string * strBracket)
                         {
-                            return SUCCESS;
+        					string curVer(ennVersion);
+        					if (*strBracket == curVer)
+        						return SUCCESS;
+        					else
+        						throw format_Error(ENN_ERR_UNSUPPORTED_ENN_FILE_FORMAT);
+
+        					return FAILURE;		// just to keep the formatter happy
                         }
 
         status_t		decodeLearning(string * strBracket)
@@ -301,8 +304,8 @@ class networkFile : public NNFile
         					std::string::size_type	startPos;
 
                             startPos = 1;
-                            net.setTrainingLearningRate(nextFValue(strBracket, startPos));
-                            net.setTrainingMomentum(nextFValue(strBracket, startPos, ')'));
+                            ((nn*)theNetwork)->setTrainingLearningRate(nextFValue(strBracket, startPos));
+                            ((nn*)theNetwork)->setTrainingMomentum(nextFValue(strBracket, startPos, ')'));
 
                             return SUCCESS;
                         }
@@ -317,22 +320,14 @@ class networkFile : public NNFile
         					whichLayer = nextUIValue(strBracket, startPos);
         					keyValue(strBracket, startPos, modifier, value);
 
-//        					cout << "key<" << modifier << "> val:" << value << "\n";
         					if (modifier == "biasNode")
         					{
 								if (whichLayer == 0)	// expand to include all but output layer
 								{
 									if (value == "true")
-									{
-										inputLinkWghts.redimension(net.standardInputNodes() + 1, net.hiddenNodes());
-										net.setInputLayerBiasNode(true);
-//										cout << "Input layer has bias node.\n";
-									}
+										((nn*)theNetwork)->setHasBiasNode(whichLayer, true);
 									else
-									{
-										net.setInputLayerBiasNode(false);
-//										cout << "Input layer has NO bias node.\n";
-									}
+										((nn*)theNetwork)->setHasBiasNode(whichLayer, false);
 								}
 								else
 									throw format_Error(ENN_ERR_BIAS_NODE_ON_INVALID_LAYER);
@@ -344,18 +339,15 @@ class networkFile : public NNFile
 
 						}
 
+        status_t		readInLines(bool shouldNotBeHere)
+						{
+							return FAILURE;
+						}
+
 	private:
-		unsigned int	major;
-		unsigned int	minor;
-		unsigned int	revis;
-
-		twoDFloatArray	inputLinkWghts;
-		twoDFloatArray	hiddenLinkWghts;
-		vector<float> *	hiddenBiases;		// created on readIn deleted at destruction
-		vector<float> * outputBiases;		//	"
-		bool			hasInputBiasNode;	// true if the input layer has a unaryBiasNode i.e. layerModifier(0, biasNode:true)
-
-        string 			name;
+        /*
+         * All data is passed to the network as it is read in
+         */
 };
 
 #endif
