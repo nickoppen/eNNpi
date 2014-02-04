@@ -25,16 +25,10 @@ class networkFile : public NNFile
 		public:
                         networkFile(ifstream * theFile) : NNFile(theFile)
                         {
-//                            hiddenBiases = NULL;
-//                            outputBiases = NULL;
-//                            hasInputBiasNode = false;
                         }
 
                         networkFile() : NNFile()
                         {
-//                            hiddenBiases = NULL;
-//                            outputBiases = NULL;
-//                            hasInputBiasNode = false;
                         }
 
                         networkFile(const char * cstrFileName) :NNFile(cstrFileName)
@@ -50,18 +44,10 @@ class networkFile : public NNFile
 
                         virtual ~networkFile() //: ~NNFile()
                         {
-//                            if (hiddenBiases != NULL)
-//                                delete hiddenBiases;
-//                            if (outputBiases != NULL)
-//                                delete outputBiases;
                         }
 
         void			setTo(ifstream * theFile)
                         {
-//                            if (hiddenBiases != NULL)
-//                                delete hiddenBiases;
-//                            if (outputBiases != NULL)
-//                                delete outputBiases;
                             NNFile::setTo(theFile);
                         }
 
@@ -72,59 +58,6 @@ class networkFile : public NNFile
 
 
 	// access
-/*		float			linkValue(unsigned int layer, unsigned int node, unsigned int link);
-		float			biasValue(unsigned int layer, unsigned int node);
-
-		unsigned int	majorVersion() { return major; }	// major reconstruction of the network (will differ from other major versions by having different inputs etc.
-		unsigned int	minorVersion() { return minor; }	// minor versions have different starting point for training
-		unsigned int	revision() { return revis; }		// revisions have different amounts of training
-
-//        void			networkDescription(network_description * netDes)	// structure passed in by the caller
-//                        {
-//                            (*netDes) = net;
-//}
-
-        void			networkName(string * netName)
-                        {
-                            (*netName) = name;
-                        }
-
-        twoDFloatArray *linkWeights(unsigned int layer)
-                        {
-                            switch (layer)
-                            {
-                                case 0:
-                                    return &inputLinkWghts;
-                                    break;
-                                case 1:
-                                    return &hiddenLinkWghts;
-                                    break;
-                                case 2:
-                                    throw format_Error(ENN_ERR_LINK_ON_OUTPUT);
-                                    break;
-                                default:
-                                    throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
-                            }
-                        }
-
-        vector<float> *	nodeBiases(unsigned int layer)
-                        {
-                            switch (layer)
-                            {
-                                case 0:
-                                    throw format_Error(ENN_ERR_INPUT_NODE_BIAS_REQUESTED);
-                                    break;
-                                case 1:
-                                    return hiddenBiases;
-                                    break;
-                                case 2:
-                                    return outputBiases;
-                                    break;
-                                default:
-                                    throw format_Error(ENN_ERR_TOO_MANY_LAYERS);
-                            }
-                        }
-*/
 	private:
         status_t		decodeLine(string * strLine)
                         {
@@ -141,10 +74,14 @@ class networkFile : public NNFile
  #endif
 
                                     rVal = decodeLink(&arguements);
-//                                    cout << "done Decode Link - dumping\n";
-//                                    inputLinkWghts.writeOn(cout);
-//                                    cout << "Decode Link done with dump - exit\n";
                                     return rVal;
+                                }
+                                if (verb == "nodeModifier")
+                                {
+#ifdef _DEBUG_
+                                	cout << "Decode node modifier\n";
+#endif
+                                	return decodeNodeModifier(&arguements);
                                 }
                                 if (verb ==  "node")
                                 {
@@ -220,12 +157,80 @@ class networkFile : public NNFile
                             linkWeight = nextFValue(strBracket, startPos, ')');
 
 #ifdef _DEBUG_
-                                        	cout << "Link: layer-" << layer << " innode-" << node << " outnode-" << link << " weight: " << linkWeight << "\n";
+                        	cout << "Link: layer-" << layer << " innode-" << node << " outnode-" << link << " weight: " << linkWeight << "\n";
 #endif
                               ((nn*)theNetwork)->setLinkWeight(layer, node, link, linkWeight);
 
                             return SUCCESS;
                         }
+
+        status_t		decodeNodeModifier(string * strBracket)
+						{
+							unsigned int layer;
+							unsigned int node;
+        					string modifier = "";
+        					string value = "";
+                            std::string::size_type startPos = 1;
+
+                            layer = nextUIValue(strBracket, startPos);
+                            node = nextUIValue(strBracket, startPos);
+
+#ifdef _DEBUG_
+                            cout << "Modifiers on layer:" << layer << " node: " << node << " -";
+#endif
+                            while (startPos != 0)
+                            {
+            					keyValue(strBracket, startPos, modifier, value);
+            					if (modifier == "input")
+            					{
+									if (value == "UNIFORM")
+										((nn*)theNetwork)->setNodeInputType(layer, node, INPUT_UNIFORM);
+									else
+										if (value == "BINARY")
+											((nn*)theNetwork)->setNodeInputType(layer, node, INPUT_BINARY);
+										else
+											if (value == "BIPOLAR")
+												((nn*)theNetwork)->setNodeInputType(layer, node, INPUT_BIPOLAR);
+											else
+											{
+												cout << value;
+												throw format_Error(ENN_ERR_UNKNOWN_NODE_MODIFIER_VALUE);//, value.c_str());
+											}
+#ifdef _DEBUG_
+									cout << " input type:" << value;
+#endif
+            					}
+            					else
+            						if (modifier == "pIsOneHalf")
+            						{
+    									if (value == "true")
+    										((nn*)theNetwork)->setNodeP(layer, node, true);
+    									else
+    										((nn*)theNetwork)->setNodeP(layer, node, false);
+#ifdef _DEBUG_
+    									cout << " p is one half:" << value;
+#endif
+            						}
+            						else
+            							if (modifier == "p")
+            							{
+            								((nn*)theNetwork)->setNodeP(layer, node, (float)atof(value.c_str()));
+#ifdef _DEBUG_
+            								cout << " p:" << value;
+#endif
+            							}
+            							else
+            							{
+            								cout << modifier << "\n";
+            								throw format_Error((modifier + "< " + ENN_ERR_UNKNOWN_NODE_MODIFIER).c_str());//, value.c_str());
+            							}
+
+                            }
+#ifdef _DEBUG_
+                            cout << "\n";
+#endif
+                            return SUCCESS;
+						}
 
         status_t		decodeNode(string * strBracket)
                         {
@@ -322,7 +327,7 @@ class networkFile : public NNFile
 
         					if (modifier == "biasNode")
         					{
-								if (whichLayer == 0)	// expand to include all but output layer
+								if (whichLayer < 3)	// expand to include all but output layer
 								{
 									if (value == "true")
 										((nn*)theNetwork)->setHasBiasNode(whichLayer, true);

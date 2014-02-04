@@ -172,8 +172,7 @@ private:
 		unsigned int node;
 		std::string::size_type startPos;
 		unsigned int inputNodeCount;
-		vector<float> lineVector(
-				inputNodeCount = ((nn*) theNetwork)->layerZeroWidth());
+		vector<float> lineVector(inputNodeCount = ((nn*) theNetwork)->layerZeroWidth());
 
 		startPos = 1;
 
@@ -195,7 +194,7 @@ private:
 #endif
 		lineVector[node] = inputValue;
 
-		((nn*) theNetwork)->run(&lineVector, NULL, lineCount); // run immediately
+		((nn*) theNetwork)->run(&lineVector, dataFile::lineCount++); // run immediately
 
 		return SUCCESS;
 	}
@@ -208,23 +207,25 @@ public:
 	trainingFile() :
 			dataFile()
 	{
+		inputToTrain = false;
 	}
 
 	trainingFile(ifstream * theFile) :
 			dataFile(theFile)
 	{
+		inputToTrain = false;
 	}
 
 	trainingFile(const char * cstrFileName) :
 			dataFile(cstrFileName)
 	{
-
+		inputToTrain = false;
 	}
 
 	trainingFile(string * strFileName) :
 			dataFile(strFileName)
 	{
-
+		inputToTrain = false;
 	}
 
 	virtual ~trainingFile() //: ~dataFile()
@@ -342,7 +343,7 @@ private:
 		if (inputToTrain)
 			((nn*) theNetwork)->train(&inVector, &outVector);
 		else
-			((nn*)theNetwork)->test(lineCount, &inVector, &outVector);
+			((nn*)theNetwork)->test(dataFile::lineCount++, &inVector, &outVector);
 
 		return SUCCESS;
 	}

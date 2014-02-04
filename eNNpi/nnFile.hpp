@@ -41,11 +41,13 @@ class NNFile
                                     NNFile()
                                     {
                                         pFile = NULL;
+                                        theNetwork = NULL;
                                         errMessage = "";
                                     }
 
                                     NNFile(ifstream * theFile)
                                     {
+                                        theNetwork = NULL;
                                         pFile = theFile;
                                         errMessage = "";
                                     }
@@ -197,7 +199,7 @@ class NNFile
 												startPos = 0;
 											}
 											else
-												startPos = endPos++; // return the begining of the next key:value pair
+												startPos = ++endPos; // return the begining of the next key:value pair
 
 											value = line->substr(sepPos+1, endPos - (sepPos + 1));
 

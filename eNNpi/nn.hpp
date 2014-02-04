@@ -6,12 +6,14 @@
 #include <sys/stat.h> // POSIX only
 
 #include <sstream>
-#include <random>
+//#include <random>
 #include <vector>
+//#include <tgmath.h>
+#include <math.h>
+#include <stdlib.h> // rand
+#include <time.h>
 #include "nnFile.hpp"
-//#include "dataFile.hpp"
 #include "twoDFloatArray.hpp"
-//#include "nnLayer.hpp"
 
 const int maxNodes = 64;
 const int maxLayers = 3;	// input layer is layer 0
@@ -62,11 +64,11 @@ class nn
 							widths[1] = hiddenLayerWidth;
 							widths[2] = outputLayerWidth;
 
+							setup();
 							setNetworkTopology(&widths);
+							resetVersion();				// randomise increments the minor version so reset it to zero
 							networkName = newName;
 							trainingLearningRate = learningRateParam;
-
-                            majorVersion = minorVersion = revision = 0;
                             networkName = newName;
 
                         }
@@ -76,6 +78,7 @@ class nn
                          * Reconstruct a network from a saved file with the wrapper newFile
                          */
                         {
+                        	setup();
                         	newFile->readInFile((void*)this);
                         };
 
@@ -88,9 +91,18 @@ class nn
                          */
                         {
                         	delete errorVector;
-//                            delete theInputLayer;
-//                            delete theHiddenLayer;
-//                            delete theOutputLayer;
+                        	deleteLayers();
+
+//                        	for (layerI = 0; layerI < layers->size(); layerI++)
+//                        	{
+//                    			if (layerI > 0)
+//									for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+//									{
+//											delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
+//									}
+//                        		delete (*layers)[layerI].nodeInfo;
+//                        	}
+//                        	delete layers;
                         }
 
 						
@@ -108,10 +120,25 @@ class nn
 			 *
 			 */
                         {
+							runCallback = runComplete;
 							inFile->readInFile((void*)this);
                         }
 
-            void		run(vector<float> * inputVector, funcRunCallback runComplete = NULL, const int index = 0)
+			void		run(vector<float> * inputVector, funcRunCallback runComplete, const int index = 0)
+			/*
+			 * a method of using run without reading the data in from a datafile
+			 */
+						{
+							if (inputVector->size() == layerZeroWidth())
+							{
+								runCallback = runComplete;
+								run(inputVector, index);
+							}
+							else
+								;//throw;
+						}
+
+            void		run(vector<float> * inputVector, const int index = 0)
             /*
              * Pass inputVector to the input layer and trigger it to execute the network logic. Call the
              * runComplete callback if it is not NULL.
@@ -130,14 +157,14 @@ class nn
             				for (i=0; i < (*layers)[0].nodeCount; i++)
             					(*layers)[0].nodeInfo->operator[](i).nodeValue = (*inputVector)[i];		// copy in the input
 
-            	cout << "index: " << index << " feedforward - first call \n";
+//            	cout << "index: " << index << " feedforward - first call \n";
             				feedForward(1);													// calulates the node values of layer 1 from the input vector
 
-                cout << "index: " << index << " feedforward - second call call \n";
+//                cout << "index: " << index << " feedforward - second call call \n";
             				feedForward(2);													// calculates the node values of layer 2, the output layer from the node values of layer 1
 
-                            if (runComplete != NULL)
-                                runComplete(index, (void*)this);
+                            if (runCallback != NULL)
+                                runCallback(index, (void*)this);
                         }
 
             void		run(vector<float> * inputVector, vector<float> * outputVector)
@@ -178,12 +205,7 @@ class nn
              *
              */
                         {
-                            // call train with each vector
-//                            unsigned int i;
-//
-//                            for (i=0; i < trFile->inputLines(); i++)
-//                                train(trFile->inputSet(i), trFile->outputSet(i));	// don't pass the call back because we only want it called at the end not after each training set
-
+            				trainCallback = trComplete;
             				trFile->readInFile((void*)this, true);
 
             				// block til complete
@@ -209,15 +231,9 @@ class nn
                                 // run
                                 run(inputVector);
 
-//                               theOutputLayer->setDesiredValues(desiredVector);
+                                // calculate error vector
 
-//                               theHiddenLayer->waitForTraining();
-//                               theHiddenLayer->train();
-//                                theHiddenLayer->blockTillTrained();
-
-//                                theInputLayer->waitForTraining();
-//                                theInputLayer->train();
-//                                theInputLayer->blockTillTrained();
+                                // train
 
                                 if (trComplete != NULL)
                                     trComplete((void*)this);
@@ -263,9 +279,7 @@ class nn
              *
              */
 						{
-
             				testFile->readInFile((void*)this, false);	// false to indicate that the file is NOT a training file
-
 						}
 
             void		test(const int index, vector<float> * inputVector, vector<float> * desiredOutput, funcTestCallback testComplete = NULL)
@@ -308,88 +322,93 @@ class nn
              * Randomise the weights and biases in the network thereby restarting the training cycle from a different place.
              */
 						{
-							random_device rd;
-							unsigned int layer;
+//							random_device rd;    // random_device not supported by the cross compiler
+							unsigned int layerI;
 							float linkWeightVectorLength;
 							unsigned int faninToNode;
 							unsigned int nodeI;
 							unsigned int linkI;
+							nodeData * curNode;
+							nodeData * remoteNode;
+							float numerator = 0;
+							float denominator = 0;
+							float weightMax;
+							float newRand;
 
-							cout << "TBC: randomise();\n";
+							srand (rand_seed);
+//							cout << "in progress: randomise(); " << rand() << "\n";
 
-							for (layer = 1; layer < 3; layer++)
+							for (layerI = 1; layerI < 3; layerI++)
 							{
-/*
- *                from nnLayer
- *                                                                for (nodeI = nodes->begin(); nodeI != nodes->end(); nodeI++)
-                                                    (*nodeI)->randomise(randSeed, node_input_binary, true, 0.5);
-                                                        // link input type for hidden outnodes is always range (-a,a) and p = 0.5 always
- *
- *
- *                from nnNodeVirtual: randomise(random_device & randSeed, const int input_type = node_input_binary, bool pEqualsOneHalf = true, float p = 0.5)
-                                             for(i = 0; i < linkCount; i++)
-                                            {
-                                                pLink = inLinks->operator[](i);
-                                                pLink->randomise(randSeed, input_type, pEqualsOneHalf, p, linkCount);
-                                            }
+								for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+								{
+									linkWeightVectorLength = 0;
+									curNode = &((*layers)[layerI].nodeInfo->operator[](nodeI));
+									for (linkI=0; linkI < curNode->incomingWeights->size(); linkI++)
+									{
+										faninToNode = curNode->incomingWeights->size();
+										remoteNode = &((*layers)[layerI-1].nodeInfo->operator[](linkI));
+										switch (remoteNode->inputType)	// the num and demon is based on the type of the node in the layer above
+										{
+										case INPUT_BINARY:
+//											cout << layerI << ": sending binary node index:" << linkI << " pisHalf:" << remoteNode->pIsOneHalf << " p:" << remoteNode->p << "\n";
+											if (remoteNode->pIsOneHalf)
+											{
+				                                numerator = (float)5.1;
+				                                denominator = sqrt(faninToNode);
+											}
+											else
+				                            {
+				                                numerator = (float)2.55;
+				                                denominator = sqrt((float)faninToNode * curNode->p * (1 - curNode->p));
+				                            }
+											break;
 
-                                            //calculate the ||w|| (the "length" of the weight vectors from the links)
-                                            for(i = 0; i < inLinks->size(); i++)
-                                                linkWeightVectorLength += pow((inLinks->operator[](i))->getWeight(), 2);
-                                            linkWeightVectorLength = sqrt(linkWeightVectorLength);
+										case INPUT_UNIFORM:
+	//										cout << layerI << ": sending uniform node index:" << linkI << " pisHalf:" << remoteNode->pIsOneHalf << " p:" << remoteNode->p << "\n";
+											if (remoteNode->pIsOneHalf)
+											{
+												numerator = (float)2.55;
+												denominator = sqrt((float)faninToNode);
+											}
+											else
+											{
+												numerator = (float)1.28;
+												denominator = sqrt((float)faninToNode * curNode->p * (1 - curNode->p));
+											}
+											break;
 
-                                            bias = (linkWeightVectorLength - ((float)randSeed() / ((float)randSeed.max() / (2 * linkWeightVectorLength))));
- *
- *			from nnLink
- *
- *										// set the weight to a random number
-							// pEqualsOneHalf == true assumes p == 0.5
-							// for uniform inputs p is the upper most positive value expected
-                        {
-                            int newRand;
-                            float numerator;
-                            float denominator;
-                            float weightMax;
+										case INPUT_BIPOLAR:
+//											cout << layerI << ": sending bipolar node index:" << linkI << " pisHalf:" << remoteNode->pIsOneHalf << " p:" << remoteNode->p << "\n";
+											if (remoteNode->pIsOneHalf)
+											{
+												numerator = (float)2.55;
+												denominator = sqrt((float)faninToNode);
+											}
+											else
+											{
+												numerator = (float)1.28;
+												denominator = sqrt((float)faninToNode * curNode->p * (1 - curNode->p));
+											}
+											break;
+										}
 
-                            if ((input_type == node_input_binary) && pEqualsOneHalf)
-                            {
-                                numerator = (float)5.1;
-                                denominator = sqrt((float)faninToNode);
-                            }
-                            else if ((input_type == node_input_binary) && !pEqualsOneHalf)
-                            {
-                                numerator = (float)2.55;
-                                denominator = sqrt((float)faninToNode * p * (1 - p));
-                            }
-                            else if ((input_type == node_input_bipolar) && pEqualsOneHalf)
-                            {
-                                numerator = (float)2.55;
-                                denominator = sqrt((float)faninToNode);
-                            }
-                            else if ((input_type == node_input_bipolar) && !pEqualsOneHalf)
-                            {
-                                numerator = (float)1.28;
-                                denominator = sqrt((float)faninToNode * p * (1 - p));
-                            }
-                            else if (input_type == node_input_uniform)
-                            {
-                                numerator = (float)4.4;
-                                denominator = p * sqrt((float)faninToNode);
-                            }
-                            else
-                            {
-                                throw;	// opps!
-                            }
+										weightMax = numerator / denominator;
+										//newRand = randSeed();
+										newRand = rand() / weightMax;
+										newRand = weightMax - ((float)rand() / (RAND_MAX / ((int)weightMax * 2)));
+//										curNode->wight = (weightMax - ((float)newRand / ((float)randSeed.max() / (2 * weightMax))));
+										curNode->incomingWeights->operator[](linkI) = newRand;		// not the whole story
+//										cout << linkI << ": " << newRand << " ";
+//										outputErrorCalculated = false;
+										linkWeightVectorLength += pow(newRand, 2);
+									}
 
-                            weightMax = numerator / denominator;
-
-                            newRand = randSeed();
-                            weight = (weightMax - ((float)newRand / ((float)randSeed.max() / (2 * weightMax))));
-                            outputErrorCalculated = false;
-
-                            return newRand;
- *
- */
+									//calculate the ||w|| (the "length" of the weight vectors from the links)
+									linkWeightVectorLength = sqrt(linkWeightVectorLength);
+									curNode->bias = (linkWeightVectorLength - ((rand_seed = (float)rand()) / (RAND_MAX / (2 * linkWeightVectorLength))));
+			//						cout << "\n";
+								}
 							}
 
 							hasChanged = true;
@@ -457,19 +476,64 @@ class nn
 			 */
 			{
 				stringstream ss;
+				unsigned int layerI;
+				unsigned int nodeI;
+				unsigned int linkI;
+				nodeData * curNode;
+				string nodeInput;
+				string strTrans;
 
 				ss.precision(8);
 
 				ss << "version" << ennVersion << "\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
-
 				ss << "networkTopology(" << (*layers)[0].nodeCount << "," <<  (*layers)[1].nodeCount <<  "," <<  (*layers)[2].nodeCount << ")\n";
-
 				ss << "learning(" << trainingLearningRate << "," << trainingMomentum << ")\n";
 
-				// call the detail storage process here
-//				theInputLayer->storeOn(&ss);
-//				theHiddenLayer->storeOn(&ss);
-//				theOutputLayer->storeOn(&ss);
+				for (layerI = 0; layerI < 3 /*layers->size()*/; layerI++)
+				{
+					switch ((*layers)[layerI].transition)
+					{
+					case TRANSITION_SIGMOID:
+						strTrans = "SIGMOID";
+						break;
+					case TRANSITION_LINEAR:
+						strTrans = "LINEAR";
+						break;
+					case TRANSITION_BINARY:
+						strTrans = "BINARY";
+						break;
+					case BIAS_NODE:
+						;
+						break;
+					}
+
+					ss << "layerModifier("<< layerI << ",biasNode:" << ((*layers)[layerI].hasBiasNode ? "true" : "false") << ",transition:" << strTrans << ")\n";
+
+					for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+					{
+						curNode = &((*layers)[layerI].nodeInfo->operator[](nodeI));
+						switch (curNode->inputType)
+						{
+						case INPUT_BINARY:
+							nodeInput = "BINARY";
+							break;
+						case INPUT_BIPOLAR:
+							nodeInput = "BIPOLAR";
+							break;
+						case INPUT_UNIFORM:
+							nodeInput = "UNIFORM";
+							break;
+						}
+						ss << "nodeModifier(" << layerI << "," << nodeI << ",p:" << curNode->p << ",pIsOneHalf:" << (curNode->pIsOneHalf ? "true" : "false") << ",input:" << nodeInput << ")\n";
+						if (layerI > 0)
+						{
+							ss << "node(" << layerI << "," << nodeI << "," << curNode->bias << ")\n";
+							for (linkI = 0; linkI <= curNode->incomingWeights->size(); linkI++)
+								ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights->operator [](linkI) << ")\n";
+						}
+					}
+
+				}
 
 				hasChanged = false;
 
@@ -479,68 +543,73 @@ class nn
 			}
 
 	// Modify
-			status_t	alter(int newIn, int newHidden, int newOut)
+			status_t	alter(vector<unsigned int> * widths)
 			/*
 			 * Alter the topology of the network to be
-			 * newIn: the new number of input nodes
-			 * newHidden: the new number of hidden nodes
-			 * newOut: the new number of output nodes
 			 *
 			 * This will randomise the network and increment the major version resetting the minorVerions and revision
 			 *
 			 */
 			{
-//				unsigned int layerNo = 0;
+				unsigned int layerI;
 
-//				delete theInputLayer;
-//				delete theHiddenLayer;
-//				delete theOutputLayer;
+				if (widths->size() == 3)	// for now
+				{
+					for (layerI = 0; layerI < layers->size(); layerI++)
+						if ((*layers)[layerI].nodeCount != (*widths)[layerI])
+						{
+							deleteLayer(layerI);	// only delete the layers that change thereby keeping the other attributes of the non changing layers
+							setupLayer(&((*layers)[layerI]), (*widths)[layerI], (layerI == 0) ? 0 : (*widths)[layerI-1]);
+						}
 
-//                net.setHiddenNodes(newHidden);
-//                net.setOutputNodes(newOut);
-//                net.setStandardInputNodes(newIn);
+					randomise();
+					incrementMajorVersion();
 
-//                theInputLayer = new inputLayer(net, layerNo++);		// deleted in ~nn
-//                theHiddenLayer = new hiddenLayer(net, layerNo++);	// deleted in ~nn
-//                theOutputLayer = new outputLayer(net, layerNo++);	// deleted in ~nn
+					hasChanged = true;
+					return SUCCESS;
+				}
+				else
+					return FAILURE;
+			}
 
-//                theInputLayer->connectNodes(theHiddenLayer->nodeList());
-//                theHiddenLayer->connectNodes(theOutputLayer->nodeList());
+			status_t	alter(unsigned int layer, layer_modifier mod, bool boolAdd = true)
+			/*
+			 * Alter a layer within the network. Currently you can only add or remove a bias node from layer zero (the input layer)
+			 *
+			 * This will randomise the network and increment the major version resetting the minorVerions and revision
+			 *
+			 */
+			{
+				if (mod == BIAS_NODE)
+					(*layers)[layer].hasBiasNode = boolAdd;
+				else
+					(*layers)[layer].transition = mod;
 
                 randomise();
                 incrementMajorVersion();
 
                 hasChanged = true;
+
+                return SUCCESS;
+			}
+
+			status_t alterNode(unsigned int layer, unsigned int node, node_modifier mod)
+			{
+				(*layers)[layer].nodeInfo->operator[](node).inputType = mod;
 				return SUCCESS;
 			}
 
-//			status_t	alter(unsigned int layer, layer_modifier mod, bool boolAdd = true)
-//			/*
-//			 * Alter a layer within the network. Currently you can only add or remove a bias node from layer zero (the input layer)
-//			 *
-//			 * This will randomise the network and increment the major version resetting the minorVerions and revision
-//			 *
-//			 */
-//			{
-//				network_description newNet;
-//
-//				newNet = net;	// keep all the old values
-//
-////				delete theInputLayer;
-////				delete theHiddenLayer;
-////				delete theOutputLayer;
-//
-//                newNet.setInputLayerBiasNode(boolAdd);
-//
-//                setup(newNet);
-//
-//                randomise();
-//                incrementMajorVersion();
-//
-//                hasChanged = true;
-//
-//                return SUCCESS;
-//			}
+			status_t alterNode(unsigned int layer, unsigned int node, float newP)
+			{
+				(*layers)[layer].nodeInfo->operator[](node).p = newP;
+				return SUCCESS;
+			}
+
+			status_t alterNode(unsigned int layer, unsigned int node, bool pIsHalf)
+			{
+				(*layers)[layer].nodeInfo->operator[](node).pIsOneHalf = pIsHalf;
+				return SUCCESS;
+			}
 
             char *	defaultName(char * buffer)
             /*
@@ -562,28 +631,29 @@ class nn
 			void setNetworkTopology(vector<unsigned int> * layerWidths)
 			{
 
-				cout << "Layer widths:" << layerWidths->size() << " - " << (*layerWidths)[0] << " " << (*layerWidths)[1] << " " << (*layerWidths)[2] << "\n";
+//				cout << "Layer widths:" << layerWidths->size() << " - " << (*layerWidths)[0] << " " << (*layerWidths)[1] << " " << (*layerWidths)[2] << "\n";
 
 				layers = new vector<layerData>(layerWidths->size());
-//				layers = new vector<layerData>(3);
 
 				setupLayer(&((*layers)[0]), (*layerWidths)[0], 0); 	// arg 2 is the previous layer width therefore 0 for the input layer
-
 				setupLayer(&((*layers)[1]), (*layerWidths)[1], (*layerWidths)[0]);
-
 				setupLayer(&((*layers)[2]), (*layerWidths)[2], (*layerWidths)[1]);
+
+				// create the error vector to be the same length as the output layer
+                errorVector = new vector<float>((*layers)[2].nodeCount);	// deleted in the destructor
+                randomise();
 			}
 
 			void setNodeBias(unsigned int layer, unsigned int node, float bias)
 			{
-				cout << "bias layer " << layer << " node " << node  << " bias " << bias << "\n";
 				layers->operator[](layer).nodeInfo->operator[](node).bias = bias;
+				cout << "bias layer " << layer << " node " << node  << " bias " << bias << "\n";
 			}
 
-			void setLinkWeight(unsigned int layer, unsigned int fromNode, unsigned int toNode, float weight)
+			void setLinkWeight(unsigned int layer, unsigned int toNode, unsigned int fromNode, float weight)
 			{
-				cout << "weight layer: " << layer << " from " << fromNode << " to " << toNode << "weight " << weight << "\n";
 				layers->operator[](layer).nodeInfo->operator[](toNode).incomingWeights->operator[](fromNode) = weight;
+				cout << "weight layer: " << layer << " from " << fromNode << " to " << toNode << "weight " << weight << "\n";
 			}
 
 			void setName(string * name)
@@ -618,6 +688,31 @@ class nn
 				(*layers)[layer].hasBiasNode = hasBiasNode;		// the node is added at setup time and is only used if hasBiasNode is true
 			}
 
+			void setNodeInputType(unsigned int layer, unsigned int node, node_modifier value)
+			{
+//				cout << "layer: " << layer << " node:" << node << " modifier:" << value << "\n";
+				(*layers)[layer].nodeInfo->operator [](node).inputType = value;
+			}
+
+			void setNodeP(unsigned int layer, unsigned int node, bool value)
+			{
+//				cout << "layer: " << layer << " node:" << node << " p is one half:" << value << "\n";
+				(*layers)[layer].nodeInfo->operator [](node).pIsOneHalf = value;
+
+			}
+
+			void setNodeP(unsigned int layer, unsigned int node, float value)
+			{
+//				cout << "layer: " << layer << " node:" << node << " p:" << value << "\n";
+				(*layers)[layer].nodeInfo->operator [](node).p = value;
+
+			}
+
+			void resetVersion()
+			{
+//				cout << "resetting version from " << majorVersion << " " << minorVersion << " " << revision << "\n";
+				majorVersion = minorVersion = revision = 0;
+			}
 	// Access
 
 			unsigned int layerZeroWidth()
@@ -640,7 +735,7 @@ class nn
             {
             	unsigned int nodeI;
 
-            	cout << "layer width: " << width << " prev:" << previousLayerWidth << "\n";
+//            	cout << "layer width: " << width << " prev:" << previousLayerWidth << "\n";
 
             	layer->nodeCount = width;
             	layer->nodeInfo = new vector<nodeData>(width + 1); // add the space now for the bias node
@@ -649,7 +744,7 @@ class nn
 
             	for(nodeI = 0; nodeI < width; nodeI++)
             	{
-            		cout << "adding node: " << nodeI << " content\n";
+//            		cout << "adding node: " << nodeI << " content\n";
             		layer->nodeInfo->operator[](nodeI).inputType = INPUT_UNIFORM;
             		layer->nodeInfo->operator[](nodeI).p = 0.5;
             		layer->nodeInfo->operator[](nodeI).pIsOneHalf = true;
@@ -657,17 +752,14 @@ class nn
             		if (previousLayerWidth != 0)	// previous  == 0 indicates that the layer is the input layer therefore does not need any incoming weights
             		{
             			layer->nodeInfo->operator[](nodeI).incomingWeights = new vector<float>(previousLayerWidth + 1); // add one in case the previous layer has a bias node
-
-            			cout << "space for incoming weights: " << layer->nodeInfo->operator[](nodeI).incomingWeights->size() << "\n";
+//            			cout << nodeI << "< node: space for incoming weights: " << layer->nodeInfo->operator[](nodeI).incomingWeights->size() << "\n";
             		}
             		else
-            			cout << "no incoming weight space allocated\n";
-
-            		//layer->nodeInfo->operator[](nodeI).bias = rand();
+            			; //cout << "no incoming weight space allocated\n";
             	}
 
             	// and set up the bias node in case it gets switched on later
-        		cout << "adding bias node content\n";
+//        		cout << "adding bias node content\n";
         		layer->nodeInfo->operator[](nodeI).inputType = INPUT_BINARY;
         		layer->nodeInfo->operator[](nodeI).p = 1;
         		layer->nodeInfo->operator[](nodeI).pIsOneHalf = false;
@@ -675,13 +767,34 @@ class nn
 
             }
 
-            void		setup()//network_description newNet, bool createWeightArrays = false)
+            void		setup()
             {
+				trainingMomentum = 0;
+                majorVersion = minorVersion = revision = 0;
+                rand_seed = time(NULL);
+            }
 
-                errorVector = new vector<float>((*layers)[2].nodeCount);	// deleted in the destructor
+            void deleteLayers()
+            {
+            	unsigned int layerI;
 
-//                if (createWeightArrays)
-//                	randomise();
+            	for (layerI = 0; layerI < layers->size(); layerI++)
+            	{
+        			if (layerI > 0)
+        				deleteLayer(layerI);
+            		delete (*layers)[layerI].nodeInfo;
+            	}
+            	delete layers;
+            }
+
+            void deleteLayer(unsigned int layerI)
+            {
+            	unsigned int nodeI;
+
+            	for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+				{
+						delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
+				}
             }
 
     // Other
@@ -715,24 +828,29 @@ class nn
             		for (inputI = 0; inputI < incomingNodeCount; inputI++)
             		{
             			sum += ((*layers)[prevLayer].nodeInfo->operator[](inputI).nodeValue) * (*layers)[targetLayer].nodeInfo->operator[](outputI).incomingWeights->operator[](inputI);
-            			cout << "target node:" << outputI << " input node:" << inputI << " sum :" << sum << "\n";
+//            			cout << "target node:" << outputI << " input node:" << inputI << " sum :" << sum << "\n";
             		}
             		switch ((*layers)[targetLayer].transition)
             		{
             		case TRANSITION_LINEAR:
-//            			break;
-            		case TRANSITION_BINARY:
             			cout << "Only SIGMOID transitions have been implemented.\n";
-//            			break;
-            		case TRANSITION_SIGMOID:
-            		default:
             			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
             			break;
+            		case TRANSITION_BINARY:
+            			cout << "Only SIGMOID transitions have been implemented.\n";
+            			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
+            			break;
+            		case TRANSITION_SIGMOID:
+            			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
+            			break;
+            		case BIAS_NODE:
+            			throw format_Error("WTF! the transition is set to BIAS_NODE...");
+            			break;
             		}
-            		cout << "node: " << outputI << " value " << (*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue << "\n";
+//            		cout << "node: " << outputI << " value " << (*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue << "\n";
             		// from outNode:: (1 / (1 + exp((double)(-1 * biasPlusActivationQuant))))
             	}
-            	cout << "end feedforward \n\n";
+//            	cout << "end feedforward \n\n";
 
             }
 			
@@ -746,6 +864,13 @@ class nn
 
 	// testing
 	vector<float>	*	errorVector;				// pass a pointer to this vector in the test callback
+	unsigned int		rand_seed;
+
+	// call backs
+	funcTestCallback	testCallback;
+	funcRunCallback		runCallback;
+	funcTrainCallback	trainCallback;
+
 
 	// identificaton
 	unsigned int		majorVersion;
