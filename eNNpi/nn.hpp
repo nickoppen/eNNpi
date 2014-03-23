@@ -90,9 +90,8 @@ class nn
                          *
                          */
                         {
-                        	errorVector->clear();
+                        	errorVector.clear();
                         	cout<<"cleared err vec\n";
-                        	delete errorVector;
                         	cout << "about to delete the layers\n";
                         	deleteLayers();
                         }
@@ -321,7 +320,7 @@ class nn
 							{
 								for (i=0; i < outputVec.size(); i++)
 									outputVec[i] = (*layers)[2].nodeInfo->operator[](i).nodeValue;
-								testCallback(index, inputVector, desiredOutput, &outputVec, errorVector, (void*)this);
+								testCallback(index, inputVector, desiredOutput, &outputVec, &errorVector, (void*)this);
 							}
 						}
 
@@ -664,7 +663,7 @@ class nn
 				setupLayer(&((*layers)[2]), (*layerWidths)[2], (*layerWidths)[1]);
 
 				// create the error vector to be the same length as the output layer
-                errorVector = new vector<float>((*layers)[2].nodeCount);	// deleted in the destructor
+                errorVector.resize((*layers)[layerNWidth()].nodeCount);
                 randomise();
 			}
 
@@ -810,10 +809,14 @@ class nn
         				deleteLayer(layerI);
         			}
         			cout << "\tdelete nodeInfo:" << layerI << "\n";
-            		delete (*layers)[layerI].nodeInfo;
+        			(*layers)[layerI].nodeInfo->clear();
+        			(*layers)[layerI].nodeInfo->resize(0);
+//            		delete (*layers)[layerI].nodeInfo;
             	}
             	cout << "delete layers\n";
-            	delete layers;
+            	layers->clear();
+            	layers->resize(0);
+//            	delete layers;
             }
 
             void deleteLayer(unsigned int layerI)
@@ -823,9 +826,10 @@ class nn
             	for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
 				{
         			cout << "\tdelete layer:" << layerI << " node:" << nodeI << "\n";
-
+        			(*layers)[layerI].nodeInfo->operator [](nodeI).incomingWeights->clear();
+        			(*layers)[layerI].nodeInfo->operator [](nodeI).incomingWeights->resize(0);
         					// this line crashes
-        			delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
+//        			delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
 				}
             }
 
@@ -890,9 +894,9 @@ class nn
             {
             	unsigned int i;
 
-            	if (desiredOutput->size() == errorVector->size())
+            	if (desiredOutput->size() == errorVector.size())
             		for (i=0; i < desiredOutput->size(); i++)
-            			(*errorVector)[i] = (*desiredOutput)[i] - (*layers)[2].nodeInfo->operator[](i).nodeValue;
+            			errorVector[i] = (*desiredOutput)[i] - (*layers)[2].nodeInfo->operator[](i).nodeValue;
             	else
             		throw internal_Error("Desired vector has the wrong dimensions");  //////////////////////////////////////////////////////
 
@@ -908,7 +912,7 @@ class nn
 	bool				hasChanged;					// set to true after randomisaton or training
 
 	// testing
-	vector<float>	*	errorVector;				// pass a pointer to this vector in the test callback
+	vector<float>		errorVector;				// pass a pointer to this vector in the test callback
 	unsigned int		rand_seed;
 
 	// call backs
