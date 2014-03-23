@@ -228,6 +228,11 @@ int main(int argc, char *argv[])
 											widths[0] = in;
 											widths[1] = hidden;
 											widths[2] = out;
+
+//											for (in=0;in < widths.size(); in++)
+//												cout << " width:"<<widths[in];
+//											cout<<"\n";
+
 											theNet->alter(&widths);
 
 											if (!quiet)
@@ -399,7 +404,7 @@ int main(int argc, char *argv[])
 													try
 													{
 														trainingFile testFile(argv[++i]);
-														theNet->test(&testFile, callback_TestComplete);
+														theNet->test(&testFile, &callback_TestComplete);
 
 														if (!quiet)
 															cout << "Done with -test\n";
@@ -470,8 +475,10 @@ int main(int argc, char *argv[])
 		cout << "-q+ OR -q- Switch quiet mode on (-q+) or off (-q-) +q+ supresses the 'Done with...' after each command line arguement\n";
 		cout << "-v0 reset the version of the network (major version == 0, minor verions == 0 and revision == 0)\n";
 	}
+	cout << "delete the net\n";
 	if (theNet != NULL)
 		delete theNet;
 
+	cout << "exiting\n";
 	return 1;
 }

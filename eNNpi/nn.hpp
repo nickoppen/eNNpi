@@ -90,19 +90,11 @@ class nn
                          *
                          */
                         {
+                        	errorVector->clear();
+                        	cout<<"cleared err vec\n";
                         	delete errorVector;
+                        	cout << "about to delete the layers\n";
                         	deleteLayers();
-
-//                        	for (layerI = 0; layerI < layers->size(); layerI++)
-//                        	{
-//                    			if (layerI > 0)
-//									for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
-//									{
-//											delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
-//									}
-//                        		delete (*layers)[layerI].nodeInfo;
-//                        	}
-//                        	delete layers;
                         }
 
 						
@@ -232,6 +224,7 @@ class nn
                                 run(inputVector);
 
                                 // calculate error vector
+                                calculateError(desiredVector);
 
                                 // train
 
@@ -279,7 +272,11 @@ class nn
              *
              */
 						{
-            				testFile->readInFile((void*)this, false);	// false to indicate that the file is NOT a training file
+            				if (testFile->fileType() == TRAIN_TEST)
+            				{
+           						testCallback = testComplete;
+            					testFile->readInFile((void*)this, false);	// false to indicate that the file is NOT a training file
+            				}
 						}
 
             void		test(const int index, vector<float> * inputVector, vector<float> * desiredOutput, funcTestCallback testComplete = NULL)
@@ -299,22 +296,33 @@ class nn
              *
              */
 						{
-            				size_t i;
             				vector<float> outputVec((*layers)[2].nodeCount);
+            				unsigned int i;
 
-            				// run
-							run(inputVector);
+            				try
+            				{
+								// run
+								run(inputVector);
 
-							// block til value
+								// block til value
 
-							// compare
-//							theOutputLayer->returnOutputVector(&outputVec);
+								// compare
+								calculateError(desiredOutput);
+            				}
+                            catch (internal_Error & iErr)
+                            {
+                                cout << iErr.mesg;// << " last error:" << iErr.lastError;
+                            }
 
-							for (i = 0; i != errorVector->size(); i++)
-								(*errorVector)[i] = outputVec[i] - (*desiredOutput)[i];
+                            if (testComplete != NULL)		// use the recent one if it is set
+                            	testCallback = testComplete;
 
-							if (testComplete != NULL)
-								testComplete(index, inputVector, desiredOutput, &outputVec, errorVector, (void*)this);
+							if (testCallback != NULL)
+							{
+								for (i=0; i < outputVec.size(); i++)
+									outputVec[i] = (*layers)[2].nodeInfo->operator[](i).nodeValue;
+								testCallback(index, inputVector, desiredOutput, &outputVec, errorVector, (void*)this);
+							}
 						}
 
             void		randomise()
@@ -336,7 +344,6 @@ class nn
 							float newRand;
 
 							srand (rand_seed);
-//							cout << "in progress: randomise(); " << rand() << "\n";
 
 							for (layerI = 1; layerI < 3; layerI++)
 							{
@@ -344,7 +351,7 @@ class nn
 								{
 									linkWeightVectorLength = 0;
 									curNode = &((*layers)[layerI].nodeInfo->operator[](nodeI));
-									for (linkI=0; linkI < curNode->incomingWeights->size(); linkI++)
+									for (linkI=0; linkI <= curNode->incomingWeights->size(); linkI++)	// don't forget that there is an extra link in case the layer above has a unary input node
 									{
 										faninToNode = curNode->incomingWeights->size();
 										remoteNode = &((*layers)[layerI-1].nodeInfo->operator[](linkI));
@@ -482,12 +489,15 @@ class nn
 				nodeData * curNode;
 				string nodeInput;
 				string strTrans;
+//				time_t ttime;
 
 				ss.precision(8);
 
 				ss << "version" << ennVersion << "\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
 				ss << "networkTopology(" << (*layers)[0].nodeCount << "," <<  (*layers)[1].nodeCount <<  "," <<  (*layers)[2].nodeCount << ")\n";
 				ss << "learning(" << trainingLearningRate << "," << trainingMomentum << ")\n";
+//				time(&ttime);
+//				ss << "comment(Output date: " << asctime(localtime(&ttime)) << ")\n";	// asctime and ctime add a \n
 
 				for (layerI = 0; layerI < 3 /*layers->size()*/; layerI++)
 				{
@@ -528,8 +538,16 @@ class nn
 						if (layerI > 0)
 						{
 							ss << "node(" << layerI << "," << nodeI << "," << curNode->bias << ")\n";
-							for (linkI = 0; linkI <= curNode->incomingWeights->size(); linkI++)
+							for (linkI = 0; linkI < curNode->incomingWeights->size(); linkI++)
 								ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights->operator [](linkI) << ")\n";
+
+							// output the link from the unary input node on the layer above.
+							if ((*layers)[layerI-1].hasBiasNode)
+								ss << "comment(The link below is from the unary input node on the layer above - which is in use.)\n";
+							else
+								ss << "comment(The link below is from the unary input node on the layer above - which is not in use.)\n";
+							ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights->operator [](linkI) << ")\n";
+
 						}
 					}
 
@@ -552,14 +570,20 @@ class nn
 			 */
 			{
 				unsigned int layerI;
+//				for (layerI=0;layerI<widths->size();layerI++)
+//					cout << " widths:" << widths->operator [](layerI);
+//				cout << "\n";
 
 				if (widths->size() == 3)	// for now
 				{
 					for (layerI = 0; layerI < layers->size(); layerI++)
 						if ((*layers)[layerI].nodeCount != (*widths)[layerI])
 						{
+							cout << "deleting layer:" << layerI << "\n";
 							deleteLayer(layerI);	// only delete the layers that change thereby keeping the other attributes of the non changing layers
+							cout << "setting up layer:" << layerI << "\n";
 							setupLayer(&((*layers)[layerI]), (*widths)[layerI], (layerI == 0) ? 0 : (*widths)[layerI-1]);
+							cout << "layer set up:" << layerI << "\n";
 						}
 
 					randomise();
@@ -781,9 +805,14 @@ class nn
             	for (layerI = 0; layerI < layers->size(); layerI++)
             	{
         			if (layerI > 0)
+        			{
+        				cout << "\tdel layer:" << layerI << "\n";
         				deleteLayer(layerI);
+        			}
+        			cout << "\tdelete nodeInfo:" << layerI << "\n";
             		delete (*layers)[layerI].nodeInfo;
             	}
+            	cout << "delete layers\n";
             	delete layers;
             }
 
@@ -793,7 +822,10 @@ class nn
 
             	for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
 				{
-						delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
+        			cout << "\tdelete layer:" << layerI << " node:" << nodeI << "\n";
+
+        					// this line crashes
+        			delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
 				}
             }
 
@@ -844,7 +876,7 @@ class nn
             			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
             			break;
             		case BIAS_NODE:
-            			throw format_Error("WTF! the transition is set to BIAS_NODE...");
+            			throw format_Error("WTF! the transition is set to BIAS_NODE...");	///////////////////////////////////////////////
             			break;
             		}
 //            		cout << "node: " << outputI << " value " << (*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue << "\n";
@@ -852,6 +884,19 @@ class nn
             	}
 //            	cout << "end feedforward \n\n";
 
+            }
+
+            status_t calculateError(vector<float> * desiredOutput)
+            {
+            	unsigned int i;
+
+            	if (desiredOutput->size() == errorVector->size())
+            		for (i=0; i < desiredOutput->size(); i++)
+            			(*errorVector)[i] = (*desiredOutput)[i] - (*layers)[2].nodeInfo->operator[](i).nodeValue;
+            	else
+            		throw internal_Error("Desired vector has the wrong dimensions");  //////////////////////////////////////////////////////
+
+            	return SUCCESS;
             }
 			
 	private:

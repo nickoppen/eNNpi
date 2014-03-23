@@ -266,7 +266,7 @@ private:
 				vector<unsigned int> layerWidths(maxLayers);
 				decodeResult = decodeNetworkTopology(&arguements, maxLayers, &layerWidths);
 				if ((layerWidths[0] == ((nn*) theNetwork)->layerZeroWidth())
-						&& (layerWidths[3] == ((nn*) theNetwork)->layerNWidth()))
+						&& (layerWidths[2] == ((nn*) theNetwork)->layerNWidth()))
 					return decodeResult;
 				else
 					throw format_Error(ENN_ERR_NONMATCHING_TOPOLOGY);
