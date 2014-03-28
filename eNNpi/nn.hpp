@@ -29,7 +29,7 @@ struct nodeData
 	bool pIsOneHalf;
 	float nodeValue;
 	float bias;
-	vector<float> * incomingWeights;
+	vector<float> incomingWeights;
 };
 
 struct layerData
@@ -38,7 +38,7 @@ struct layerData
 	unsigned int nodeCount;
 	bool hasBiasNode;
 	layer_modifier transition;
-	vector<nodeData> * nodeInfo;
+	vector<nodeData> nodeInfo;
 };
 
 
@@ -145,8 +145,8 @@ class nn
                         {
             				unsigned int i;
 
-            				for (i=0; i < (*layers)[0].nodeCount; i++)
-            					(*layers)[0].nodeInfo->operator[](i).nodeValue = (*inputVector)[i];		// copy in the input
+            				for (i=0; i < layers[0].nodeCount; i++)
+            					layers[0].nodeInfo[i].nodeValue = (*inputVector)[i];		// copy in the input
 
 //            	cout << "index: " << index << " feedforward - first call \n";
             				feedForward(1);													// calulates the node values of layer 1 from the input vector
@@ -180,8 +180,8 @@ class nn
                         {
             				unsigned int outI;
 
-            				for (outI = 0;  outI < (*layers)[2].nodeInfo->size(); outI++)
-            					(*outputVector)[outI] = (*layers)[2].nodeInfo->operator[](outI).nodeValue;	// copy the contents
+            				for (outI = 0;  outI < layers[2].nodeInfo.size(); outI++)
+            					(*outputVector)[outI] = layers[2].nodeInfo[outI].nodeValue;	// copy the contents
                             return outputVector;
                         }
 
@@ -246,7 +246,7 @@ class nn
              *
              */
 						{
-            				if (errorVector->size() != (*layers)[2].nodeCount)
+            				if (errorVector->size() != layerNWidth())
             					return FAILURE;
             				else
             		//			theOutputLayer->trainingError(errorVector);
@@ -295,7 +295,7 @@ class nn
              *
              */
 						{
-            				vector<float> outputVec((*layers)[2].nodeCount);
+            				vector<float> outputVec(layers[2].nodeCount);
             				unsigned int i;
 
             				try
@@ -319,7 +319,7 @@ class nn
 							if (testCallback != NULL)
 							{
 								for (i=0; i < outputVec.size(); i++)
-									outputVec[i] = (*layers)[2].nodeInfo->operator[](i).nodeValue;
+									outputVec[i] = layers[2].nodeInfo[i].nodeValue;
 								testCallback(index, inputVector, desiredOutput, &outputVec, &errorVector, (void*)this);
 							}
 						}
@@ -346,14 +346,14 @@ class nn
 
 							for (layerI = 1; layerI < 3; layerI++)
 							{
-								for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+								for (nodeI = 0; nodeI < layers[layerI].nodeCount; nodeI++)
 								{
 									linkWeightVectorLength = 0;
-									curNode = &((*layers)[layerI].nodeInfo->operator[](nodeI));
-									for (linkI=0; linkI <= curNode->incomingWeights->size(); linkI++)	// don't forget that there is an extra link in case the layer above has a unary input node
+									curNode = &(layers[layerI].nodeInfo[nodeI]);
+									for (linkI=0; linkI <= curNode->incomingWeights.size(); linkI++)	// don't forget that there is an extra link in case the layer above has a unary input node
 									{
-										faninToNode = curNode->incomingWeights->size();
-										remoteNode = &((*layers)[layerI-1].nodeInfo->operator[](linkI));
+										faninToNode = curNode->incomingWeights.size();
+										remoteNode = &(layers[layerI-1].nodeInfo[linkI]);
 										switch (remoteNode->inputType)	// the num and demon is based on the type of the node in the layer above
 										{
 										case INPUT_BINARY:
@@ -404,7 +404,7 @@ class nn
 										newRand = rand() / weightMax;
 										newRand = weightMax - ((float)rand() / (RAND_MAX / ((int)weightMax * 2)));
 //										curNode->wight = (weightMax - ((float)newRand / ((float)randSeed.max() / (2 * weightMax))));
-										curNode->incomingWeights->operator[](linkI) = newRand;		// not the whole story
+										curNode->incomingWeights[linkI] = newRand;		// not the whole story
 //										cout << linkI << ": " << newRand << " ";
 //										outputErrorCalculated = false;
 										linkWeightVectorLength += pow(newRand, 2);
@@ -493,14 +493,14 @@ class nn
 				ss.precision(8);
 
 				ss << "version" << ennVersion << "\nname(" << networkName << "," << majorVersion << "," << minorVersion << "," << revision << ")\n" ;
-				ss << "networkTopology(" << (*layers)[0].nodeCount << "," <<  (*layers)[1].nodeCount <<  "," <<  (*layers)[2].nodeCount << ")\n";
+				ss << "networkTopology(" << layers[0].nodeCount << "," <<  layers[1].nodeCount <<  "," <<  layers[2].nodeCount << ")\n";
 				ss << "learning(" << trainingLearningRate << "," << trainingMomentum << ")\n";
 //				time(&ttime);
 //				ss << "comment(Output date: " << asctime(localtime(&ttime)) << ")\n";	// asctime and ctime add a \n
 
 				for (layerI = 0; layerI < 3 /*layers->size()*/; layerI++)
 				{
-					switch ((*layers)[layerI].transition)
+					switch (layers[layerI].transition)
 					{
 					case TRANSITION_SIGMOID:
 						strTrans = "SIGMOID";
@@ -516,11 +516,11 @@ class nn
 						break;
 					}
 
-					ss << "layerModifier("<< layerI << ",biasNode:" << ((*layers)[layerI].hasBiasNode ? "true" : "false") << ",transition:" << strTrans << ")\n";
+					ss << "layerModifier("<< layerI << ",biasNode:" << (layers[layerI].hasBiasNode ? "true" : "false") << ",transition:" << strTrans << ")\n";
 
-					for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+					for (nodeI = 0; nodeI < layers[layerI].nodeCount; nodeI++)
 					{
-						curNode = &((*layers)[layerI].nodeInfo->operator[](nodeI));
+						curNode = &(layers[layerI].nodeInfo[nodeI]);
 						switch (curNode->inputType)
 						{
 						case INPUT_BINARY:
@@ -537,15 +537,15 @@ class nn
 						if (layerI > 0)
 						{
 							ss << "node(" << layerI << "," << nodeI << "," << curNode->bias << ")\n";
-							for (linkI = 0; linkI < curNode->incomingWeights->size(); linkI++)
-								ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights->operator [](linkI) << ")\n";
+							for (linkI = 0; linkI < curNode->incomingWeights.size(); linkI++)
+								ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights[linkI] << ")\n";
 
 							// output the link from the unary input node on the layer above.
-							if ((*layers)[layerI-1].hasBiasNode)
+							if (layers[layerI-1].hasBiasNode)
 								ss << "comment(The link below is from the unary input node on the layer above - which is in use.)\n";
 							else
 								ss << "comment(The link below is from the unary input node on the layer above - which is not in use.)\n";
-							ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights->operator [](linkI) << ")\n";
+							ss << "link(" << layerI << "," << nodeI << "," << linkI << "," << curNode->incomingWeights[linkI] << ")\n";
 
 						}
 					}
@@ -575,13 +575,13 @@ class nn
 
 				if (widths->size() == 3)	// for now
 				{
-					for (layerI = 0; layerI < layers->size(); layerI++)
-						if ((*layers)[layerI].nodeCount != (*widths)[layerI])
+					for (layerI = 0; layerI < layers.size(); layerI++)
+						if (layers[layerI].nodeCount != (*widths)[layerI])
 						{
 							cout << "deleting layer:" << layerI << "\n";
 							deleteLayer(layerI);	// only delete the layers that change thereby keeping the other attributes of the non changing layers
 							cout << "setting up layer:" << layerI << "\n";
-							setupLayer(&((*layers)[layerI]), (*widths)[layerI], (layerI == 0) ? 0 : (*widths)[layerI-1]);
+							setupLayer(&(layers[layerI]), (*widths)[layerI], (layerI == 0) ? 0 : (*widths)[layerI-1]);
 							cout << "layer set up:" << layerI << "\n";
 						}
 
@@ -604,9 +604,9 @@ class nn
 			 */
 			{
 				if (mod == BIAS_NODE)
-					(*layers)[layer].hasBiasNode = boolAdd;
+					layers[layer].hasBiasNode = boolAdd;
 				else
-					(*layers)[layer].transition = mod;
+					layers[layer].transition = mod;
 
                 randomise();
                 incrementMajorVersion();
@@ -618,19 +618,19 @@ class nn
 
 			status_t alterNode(unsigned int layer, unsigned int node, node_modifier mod)
 			{
-				(*layers)[layer].nodeInfo->operator[](node).inputType = mod;
+				layers[layer].nodeInfo[node].inputType = mod;
 				return SUCCESS;
 			}
 
 			status_t alterNode(unsigned int layer, unsigned int node, float newP)
 			{
-				(*layers)[layer].nodeInfo->operator[](node).p = newP;
+				layers[layer].nodeInfo[node].p = newP;
 				return SUCCESS;
 			}
 
 			status_t alterNode(unsigned int layer, unsigned int node, bool pIsHalf)
 			{
-				(*layers)[layer].nodeInfo->operator[](node).pIsOneHalf = pIsHalf;
+				layers[layer].nodeInfo[node].pIsOneHalf = pIsHalf;
 				return SUCCESS;
 			}
 
@@ -656,26 +656,26 @@ class nn
 
 //				cout << "Layer widths:" << layerWidths->size() << " - " << (*layerWidths)[0] << " " << (*layerWidths)[1] << " " << (*layerWidths)[2] << "\n";
 
-				layers = new vector<layerData>(layerWidths->size());
+				layers.resize(layerWidths->size());
 
-				setupLayer(&((*layers)[0]), (*layerWidths)[0], 0); 	// arg 2 is the previous layer width therefore 0 for the input layer
-				setupLayer(&((*layers)[1]), (*layerWidths)[1], (*layerWidths)[0]);
-				setupLayer(&((*layers)[2]), (*layerWidths)[2], (*layerWidths)[1]);
+				setupLayer(&(layers[0]), (*layerWidths)[0], 0); 	// arg 2 is the previous layer width therefore 0 for the input layer
+				setupLayer(&(layers[1]), (*layerWidths)[1], (*layerWidths)[0]);
+				setupLayer(&(layers[2]), (*layerWidths)[2], (*layerWidths)[1]);
 
 				// create the error vector to be the same length as the output layer
-                errorVector.resize((*layers)[layerNWidth()].nodeCount);
+                errorVector.resize(layerNWidth());
                 randomise();
 			}
 
 			void setNodeBias(unsigned int layer, unsigned int node, float bias)
 			{
-				layers->operator[](layer).nodeInfo->operator[](node).bias = bias;
+				layers[layer].nodeInfo[node].bias = bias;
 				cout << "bias layer " << layer << " node " << node  << " bias " << bias << "\n";
 			}
 
 			void setLinkWeight(unsigned int layer, unsigned int toNode, unsigned int fromNode, float weight)
 			{
-				layers->operator[](layer).nodeInfo->operator[](toNode).incomingWeights->operator[](fromNode) = weight;
+				layers[layer].nodeInfo[toNode].incomingWeights[fromNode] = weight;
 				cout << "weight layer: " << layer << " from " << fromNode << " to " << toNode << "weight " << weight << "\n";
 			}
 
@@ -708,26 +708,26 @@ class nn
 			void setHasBiasNode(unsigned int layer, bool hasBiasNode)
 			{
 				cout << "layer: " << layer << "bias node:" << hasBiasNode << "\n";
-				(*layers)[layer].hasBiasNode = hasBiasNode;		// the node is added at setup time and is only used if hasBiasNode is true
+				layers[layer].hasBiasNode = hasBiasNode;		// the node is added at setup time and is only used if hasBiasNode is true
 			}
 
 			void setNodeInputType(unsigned int layer, unsigned int node, node_modifier value)
 			{
 //				cout << "layer: " << layer << " node:" << node << " modifier:" << value << "\n";
-				(*layers)[layer].nodeInfo->operator [](node).inputType = value;
+				layers[layer].nodeInfo[node].inputType = value;
 			}
 
 			void setNodeP(unsigned int layer, unsigned int node, bool value)
 			{
 //				cout << "layer: " << layer << " node:" << node << " p is one half:" << value << "\n";
-				(*layers)[layer].nodeInfo->operator [](node).pIsOneHalf = value;
+				layers[layer].nodeInfo[node].pIsOneHalf = value;
 
 			}
 
 			void setNodeP(unsigned int layer, unsigned int node, float value)
 			{
 //				cout << "layer: " << layer << " node:" << node << " p:" << value << "\n";
-				(*layers)[layer].nodeInfo->operator [](node).p = value;
+				layers[layer].nodeInfo[node].p = value;
 
 			}
 
@@ -740,12 +740,17 @@ class nn
 
 			unsigned int layerZeroWidth()
 			{
-				return (*layers)[0].nodeCount;
+				return layers[0].nodeCount;
+			}
+
+			unsigned int layerN()
+			{
+				return 2;
 			}
 
 			unsigned int layerNWidth()
 			{
-				return (*layers)[2].nodeCount;
+				return layers[2].nodeCount;
 			}
 
     // Setup
@@ -761,20 +766,20 @@ class nn
 //            	cout << "layer width: " << width << " prev:" << previousLayerWidth << "\n";
 
             	layer->nodeCount = width;
-            	layer->nodeInfo = new vector<nodeData>(width + 1); // add the space now for the bias node
+            	layer->nodeInfo.resize(width + 1); // add the space now for the bias node
             	layer->transition = TRANSITION_SIGMOID;
             	layer->hasBiasNode = false;
 
             	for(nodeI = 0; nodeI < width; nodeI++)
             	{
 //            		cout << "adding node: " << nodeI << " content\n";
-            		layer->nodeInfo->operator[](nodeI).inputType = INPUT_UNIFORM;
-            		layer->nodeInfo->operator[](nodeI).p = 0.5;
-            		layer->nodeInfo->operator[](nodeI).pIsOneHalf = true;
+            		layer->nodeInfo[nodeI].inputType = INPUT_UNIFORM;
+            		layer->nodeInfo[nodeI].p = 0.5;
+            		layer->nodeInfo[nodeI].pIsOneHalf = true;
 
             		if (previousLayerWidth != 0)	// previous  == 0 indicates that the layer is the input layer therefore does not need any incoming weights
             		{
-            			layer->nodeInfo->operator[](nodeI).incomingWeights = new vector<float>(previousLayerWidth + 1); // add one in case the previous layer has a bias node
+            			layer->nodeInfo[nodeI].incomingWeights.resize(previousLayerWidth + 1); // add one in case the previous layer has a bias node
 //            			cout << nodeI << "< node: space for incoming weights: " << layer->nodeInfo->operator[](nodeI).incomingWeights->size() << "\n";
             		}
             		else
@@ -783,10 +788,10 @@ class nn
 
             	// and set up the bias node in case it gets switched on later
 //        		cout << "adding bias node content\n";
-        		layer->nodeInfo->operator[](nodeI).inputType = INPUT_BINARY;
-        		layer->nodeInfo->operator[](nodeI).p = 1;
-        		layer->nodeInfo->operator[](nodeI).pIsOneHalf = false;
-        		layer->nodeInfo->operator[](nodeI).nodeValue = 1;
+        		layer->nodeInfo[nodeI].inputType = INPUT_BINARY;
+        		layer->nodeInfo[nodeI].p = 1;
+        		layer->nodeInfo[nodeI].pIsOneHalf = false;
+        		layer->nodeInfo[nodeI].nodeValue = 1;
 
             }
 
@@ -801,7 +806,7 @@ class nn
             {
             	unsigned int layerI;
 
-            	for (layerI = 0; layerI < layers->size(); layerI++)
+            	for (layerI = 0; layerI < layers.size(); layerI++)
             	{
         			if (layerI > 0)
         			{
@@ -809,27 +814,23 @@ class nn
         				deleteLayer(layerI);
         			}
         			cout << "\tdelete nodeInfo:" << layerI << "\n";
-        			(*layers)[layerI].nodeInfo->clear();
-        			(*layers)[layerI].nodeInfo->resize(0);
-//            		delete (*layers)[layerI].nodeInfo;
+        			layers[layerI].nodeInfo.clear();
+        			layers[layerI].nodeInfo.resize(0);
             	}
             	cout << "delete layers\n";
-            	layers->clear();
-            	layers->resize(0);
-//            	delete layers;
+            	layers.clear();
+            	layers.resize(0);
             }
 
             void deleteLayer(unsigned int layerI)
             {
             	unsigned int nodeI;
 
-            	for (nodeI = 0; nodeI < (*layers)[layerI].nodeCount; nodeI++)
+            	for (nodeI = 0; nodeI < layers[layerI].nodeCount; nodeI++)
 				{
         			cout << "\tdelete layer:" << layerI << " node:" << nodeI << "\n";
-        			(*layers)[layerI].nodeInfo->operator [](nodeI).incomingWeights->clear();
-        			(*layers)[layerI].nodeInfo->operator [](nodeI).incomingWeights->resize(0);
-        					// this line crashes
-//        			delete (*layers)[layerI].nodeInfo->operator[](nodeI).incomingWeights;
+        			layers[layerI].nodeInfo[nodeI].incomingWeights.clear();
+        			layers[layerI].nodeInfo[nodeI].incomingWeights.resize(0);
 				}
             }
 
@@ -857,33 +858,33 @@ class nn
             	float sum = 0;
 
 //            	cout << "output vecotr size:" << nodes->size() << "\n";
-            	for (outputI = 0; outputI < (*layers)[targetLayer].nodeCount; outputI++)
+            	for (outputI = 0; outputI < layers[targetLayer].nodeCount; outputI++)
             	{
-            		incomingNodeCount = ((*layers)[prevLayer].hasBiasNode ? (*layers)[prevLayer].nodeCount + 1 : (*layers)[prevLayer].nodeCount);
+            		incomingNodeCount = (layers[prevLayer].hasBiasNode ? layers[prevLayer].nodeCount + 1 : layers[prevLayer].nodeCount);
 //            		cout << "output node:" << outputI << " Input vector size:" << inputData->size() << "\n";
             		for (inputI = 0; inputI < incomingNodeCount; inputI++)
             		{
-            			sum += ((*layers)[prevLayer].nodeInfo->operator[](inputI).nodeValue) * (*layers)[targetLayer].nodeInfo->operator[](outputI).incomingWeights->operator[](inputI);
+            			sum += (layers[prevLayer].nodeInfo[inputI].nodeValue) * (layers[targetLayer].nodeInfo[outputI].incomingWeights[inputI]);
 //            			cout << "target node:" << outputI << " input node:" << inputI << " sum :" << sum << "\n";
             		}
-            		switch ((*layers)[targetLayer].transition)
+            		switch (layers[targetLayer].transition)
             		{
             		case TRANSITION_LINEAR:
             			cout << "Only SIGMOID transitions have been implemented.\n";
-            			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
+            			layers[targetLayer].nodeInfo[outputI].nodeValue = 1 / (1 + exp((double)(-1 * (sum + layers[targetLayer].nodeInfo[outputI].bias))));		// sigmoid of the sum plus the bias
             			break;
             		case TRANSITION_BINARY:
             			cout << "Only SIGMOID transitions have been implemented.\n";
-            			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
+            			layers[targetLayer].nodeInfo[outputI].nodeValue = 1 / (1 + exp((double)(-1 * (sum + layers[targetLayer].nodeInfo[outputI].bias))));		// sigmoid of the sum plus the bias
             			break;
             		case TRANSITION_SIGMOID:
-            			(*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue = 1 / (1 + exp((double)(-1 * (sum + (*layers)[targetLayer].nodeInfo->operator[](outputI).bias))));		// sigmoid of the sum plus the bias
+            			layers[targetLayer].nodeInfo[outputI].nodeValue = 1 / (1 + exp((double)(-1 * (sum + layers[targetLayer].nodeInfo[outputI].bias))));		// sigmoid of the sum plus the bias
             			break;
             		case BIAS_NODE:
             			throw format_Error("WTF! the transition is set to BIAS_NODE...");	///////////////////////////////////////////////
             			break;
             		}
-//            		cout << "node: " << outputI << " value " << (*layers)[targetLayer].nodeInfo->operator[](outputI).nodeValue << "\n";
+//            		cout << "node: " << outputI << " value " << layers[targetLayer].nodeInfo->operator[](outputI).nodeValue << "\n";
             		// from outNode:: (1 / (1 + exp((double)(-1 * biasPlusActivationQuant))))
             	}
 //            	cout << "end feedforward \n\n";
@@ -893,18 +894,21 @@ class nn
             status_t calculateError(vector<float> * desiredOutput)
             {
             	unsigned int i;
+            	unsigned int n = layerN();
+
+            	cout << "desired output size:" << desiredOutput->size() << " err vec size:" << errorVector.size() << "\n";
 
             	if (desiredOutput->size() == errorVector.size())
             		for (i=0; i < desiredOutput->size(); i++)
-            			errorVector[i] = (*desiredOutput)[i] - (*layers)[2].nodeInfo->operator[](i).nodeValue;
+            			errorVector[i] = (*desiredOutput)[i] - layers[n].nodeInfo[i].nodeValue;
             	else
-            		throw internal_Error("Desired vector has the wrong dimensions");  //////////////////////////////////////////////////////
+            		throw internal_Error("Desired vector has the wrong dimensions\n");  //////////////////////////////////////////////////////
 
             	return SUCCESS;
             }
 			
 	private:
-    vector<layerData>  * layers;
+    vector<layerData>    layers;
     float				 trainingLearningRate;
     float				 trainingMomentum;
 
